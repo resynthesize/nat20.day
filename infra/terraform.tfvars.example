@@ -1,0 +1,18 @@
+# Copy this file to terraform.tfvars and fill in your values
+# terraform.tfvars is git-ignored and should NEVER be committed
+
+# Provider API tokens (get these from each service's dashboard)
+vercel_api_token       = ""  # https://vercel.com/account/tokens
+cloudflare_api_token   = ""  # https://dash.cloudflare.com/profile/api-tokens
+supabase_access_token  = ""  # https://supabase.com/dashboard/account/tokens
+
+# Cloudflare zone ID (found in domain overview page)
+cloudflare_zone_id = ""
+
+# Supabase organization ID (found in org settings)
+supabase_organization_id   = ""
+supabase_database_password = ""  # Choose a strong password
+
+# Google OAuth credentials (https://console.cloud.google.com/apis/credentials)
+google_client_id     = ""
+google_client_secret = ""
