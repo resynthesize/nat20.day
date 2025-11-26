@@ -16,7 +16,6 @@ export const error = (
     error: { code, message },
   })
 
-// Pattern match on tagged errors for clean error handling
 export const handleError = (res: VercelResponse, err: unknown) =>
   Match.value(err).pipe(
     Match.when(Match.instanceOf(ValidationError), (e) =>

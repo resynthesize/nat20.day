@@ -20,7 +20,6 @@ export function useAvailability() {
     error: null,
   })
 
-  // Fetch all data (showLoading=false for background refetches)
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) {
       setState((s) => ({ ...s, loading: true, error: null }))
@@ -31,7 +30,6 @@ export function useAvailability() {
       const fromDate = dates[0]
       const toDate = dates[dates.length - 1]
 
-      // Fetch party members (with linked profile data) and availability in parallel
       const [membersResult, availabilityResult] = await Promise.all([
         supabase
           .from('party_members')
@@ -67,7 +65,7 @@ export function useAvailability() {
       if (membersResult.error) throw membersResult.error
       if (availabilityResult.error) throw availabilityResult.error
 
-      // Transform data - Supabase returns profiles as array sometimes
+      // Supabase returns joined data as arrays
       const partyMembers = membersResult.data.map((item) => ({
         ...item,
         profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
@@ -94,7 +92,6 @@ export function useAvailability() {
     }
   }, [])
 
-  // Set availability for a party member on a date
   const setAvailability = useCallback(
     async (memberId: string, date: string, available: boolean) => {
       // Optimistic update
@@ -112,7 +109,6 @@ export function useAvailability() {
           }
         }
 
-        // Add new entry
         const member = s.partyMembers.find((m) => m.id === memberId)
         if (!member) return s
 
@@ -132,7 +128,6 @@ export function useAvailability() {
         }
       })
 
-      // Persist to database
       const { error } = await supabase
         .from('availability')
         .upsert(
@@ -142,14 +137,12 @@ export function useAvailability() {
 
       if (error) {
         console.error('Error setting availability:', error)
-        // Revert on error
-        fetchData(false)
+        fetchData(false) // Revert on error
       }
     },
     [fetchData]
   )
 
-  // Clear availability for a party member on a date
   const clearAvailability = useCallback(
     async (memberId: string, date: string) => {
       // Optimistic update
@@ -160,7 +153,6 @@ export function useAvailability() {
         ),
       }))
 
-      // Delete from database
       const { error } = await supabase
         .from('availability')
         .delete()
@@ -175,22 +167,17 @@ export function useAvailability() {
     [fetchData]
   )
 
-  // Initial fetch
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // Subscribe to realtime updates
   useEffect(() => {
     const channel = supabase
       .channel('availability-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'availability' },
-        () => {
-          // Refetch on any change (no loading spinner for background updates)
-          fetchData(false)
-        }
+        () => fetchData(false) // Background refetch without loading spinner
       )
       .subscribe()
 
@@ -199,7 +186,6 @@ export function useAvailability() {
     }
   }, [fetchData])
 
-  // Helper to get availability for a specific member and date
   const getAvailability = useCallback(
     (memberId: string, date: string) => {
       return state.availability.find(
@@ -209,7 +195,6 @@ export function useAvailability() {
     [state.availability]
   )
 
-  // Helper to count available members for a date
   const countAvailable = useCallback(
     (date: string) => {
       return state.availability.filter((a) => a.date === date && a.available).length

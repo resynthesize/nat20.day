@@ -2,7 +2,6 @@ import { Context, Effect, Layer, pipe, Option } from 'effect'
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { AuthError, ConfigError, DatabaseError } from './errors'
 
-// Database types
 export interface Profile {
   id: string
   display_name: string
@@ -22,7 +21,6 @@ export interface AvailabilityWithProfile extends Availability {
   profiles: Pick<Profile, 'display_name' | 'avatar_url'>
 }
 
-// Supabase Service interface
 export interface SupabaseServiceImpl {
   readonly client: SupabaseClient
   readonly getUser: (authHeader: string | null) => Effect.Effect<User, AuthError>
@@ -33,7 +31,6 @@ export class SupabaseService extends Context.Tag('SupabaseService')<
   SupabaseServiceImpl
 >() {}
 
-// Parse bearer token from header
 const parseAuthHeader = (header: string | null): Option.Option<string> =>
   pipe(
     Option.fromNullable(header),
@@ -41,7 +38,6 @@ const parseAuthHeader = (header: string | null): Option.Option<string> =>
     Option.map((h) => h.slice(7))
   )
 
-// Get user from auth token
 const makeGetUser =
   (client: SupabaseClient) =>
   (authHeader: string | null): Effect.Effect<User, AuthError> =>
@@ -61,7 +57,6 @@ const makeGetUser =
       )
     )
 
-// Create Supabase client effect
 const makeClient: Effect.Effect<SupabaseClient, ConfigError> = pipe(
   Effect.all({
     url: pipe(
@@ -83,7 +78,6 @@ const makeClient: Effect.Effect<SupabaseClient, ConfigError> = pipe(
   )
 )
 
-// Live layer for Supabase service
 export const SupabaseServiceLive = Layer.effect(
   SupabaseService,
   pipe(
@@ -96,7 +90,7 @@ export const SupabaseServiceLive = Layer.effect(
   )
 )
 
-// Helper to run a query and handle Supabase's error-in-response pattern
+// Supabase returns errors in the response body, not as exceptions
 export const runQuery = <T>(
   query: Promise<{ data: T | null; error: { message: string; code?: string } | null }>
 ): Effect.Effect<T, DatabaseError> =>
@@ -114,7 +108,6 @@ export const runQuery = <T>(
     )
   )
 
-// Helper for queries that may return null (single row)
 export const runQueryOptional = <T>(
   query: Promise<{ data: T | null; error: { message: string; code?: string } | null }>
 ): Effect.Effect<Option.Option<T>, DatabaseError> =>
@@ -130,7 +123,6 @@ export const runQueryOptional = <T>(
     )
   )
 
-// Helper for mutations that don't return data
 export const runMutation = (
   query: Promise<{ error: { message: string; code?: string } | null }>
 ): Effect.Effect<void, DatabaseError> =>

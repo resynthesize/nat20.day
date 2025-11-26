@@ -26,7 +26,6 @@ export function ScheduleGrid() {
   }
 
   const handleToggle = (memberId: string, date: string) => {
-    // Can toggle if admin OR if it's your own row
     const member = partyMembers.find((m) => m.id === memberId)
     const isOwnRow = member?.profile_id === user?.id
     if (!isAdmin && !isOwnRow) return
@@ -36,7 +35,6 @@ export function ScheduleGrid() {
     setAvailability(memberId, date, newValue)
   }
 
-  // Check if all party members are available for a date
   const isAllAvailable = (date: string) => {
     return countAvailable(date) === partyMembers.length && partyMembers.length > 0
   }
@@ -47,7 +45,6 @@ export function ScheduleGrid() {
         <div className="admin-badge">Admin Mode - You can edit all schedules</div>
       )}
       <div className="schedule-grid">
-        {/* Header row with dates */}
         <div className="grid-header">
           <div className="player-label">Adventurer</div>
           {dates.map((date) => {
@@ -64,7 +61,6 @@ export function ScheduleGrid() {
           })}
         </div>
 
-        {/* Player rows */}
         {partyMembers.map((member) => {
           const isCurrentUser = member.profile_id === user?.id
           const canEdit = isAdmin || isCurrentUser
@@ -84,7 +80,6 @@ export function ScheduleGrid() {
         })}
       </div>
 
-      {/* Legend */}
       <div className="legend">
         <span className="legend-item">
           <span className="legend-dot available" />
@@ -122,7 +117,6 @@ function MemberRow({
   onToggle,
   isAllAvailable,
 }: MemberRowProps) {
-  // Use profile data if linked, otherwise use party member name
   const displayName = member.profiles?.display_name || member.name
   const avatarUrl = member.profiles?.avatar_url
   const isLinked = member.profile_id !== null

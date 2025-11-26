@@ -6,7 +6,6 @@ import { ValidationError } from '../lib/errors'
 import { SetAvailabilityInput } from '../lib/schemas'
 import { success, handleError } from '../lib/response'
 
-// Validate date parameter - must be valid YYYY-MM-DD and Thu/Fri
 const validateDate = (dateStr: string): Effect.Effect<string, ValidationError> =>
   pipe(
     Effect.succeed(parseISO(dateStr)),
@@ -21,7 +20,6 @@ const validateDate = (dateStr: string): Effect.Effect<string, ValidationError> =
     Effect.as(dateStr)
   )
 
-// Validate request body
 const validateBody = (body: unknown): Effect.Effect<SetAvailabilityInput, ValidationError> =>
   pipe(
     Schema.decodeUnknown(SetAvailabilityInput)(body),
@@ -30,14 +28,12 @@ const validateBody = (body: unknown): Effect.Effect<SetAvailabilityInput, Valida
     )
   )
 
-// Get authenticated user from service
 const getAuthenticatedUser = (authHeader: string | null) =>
   pipe(
     SupabaseService,
     Effect.flatMap(({ getUser }) => getUser(authHeader))
   )
 
-// Upsert availability
 const upsertAvailability = (userId: string, date: string, available: boolean) =>
   pipe(
     SupabaseService,
@@ -52,7 +48,6 @@ const upsertAvailability = (userId: string, date: string, available: boolean) =>
     )
   )
 
-// Delete availability
 const deleteAvailability = (userId: string, date: string) =>
   pipe(
     SupabaseService,
@@ -63,7 +58,6 @@ const deleteAvailability = (userId: string, date: string) =>
     )
   )
 
-// PUT handler - set availability
 const handlePut = (req: VercelRequest, dateParam: string) =>
   pipe(
     Effect.all({
@@ -74,7 +68,6 @@ const handlePut = (req: VercelRequest, dateParam: string) =>
     Effect.flatMap(({ date, body, user }) => upsertAvailability(user.id, date, body.available))
   )
 
-// DELETE handler - remove availability
 const handleDelete = (req: VercelRequest, dateParam: string) =>
   pipe(
     Effect.all({
@@ -85,7 +78,6 @@ const handleDelete = (req: VercelRequest, dateParam: string) =>
     Effect.as({ deleted: true })
   )
 
-// Main handler
 const handler = (req: VercelRequest, res: VercelResponse) => {
   const dateParam = req.query.date as string
 

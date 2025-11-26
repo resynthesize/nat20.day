@@ -10,7 +10,6 @@ interface AuthState {
   loading: boolean
 }
 
-// Check if there might be a session stored (quick sync check)
 function hasStoredSession(): boolean {
   try {
     const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
@@ -21,16 +20,15 @@ function hasStoredSession(): boolean {
 }
 
 export function useAuth() {
-  // Only show loading if there might be a stored session
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
     session: null,
-    loading: hasStoredSession(),
+    loading: hasStoredSession(), // Only show loading if there might be a stored session
   })
 
-  // Fetch profile for a user (created automatically by DB trigger on signup)
   const fetchProfile = useCallback(async (userId: string) => {
+    // Profile is created automatically by DB trigger on signup
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -45,17 +43,14 @@ export function useAuth() {
     return data as Profile | null
   }, [])
 
-  // Initialize auth state
   useEffect(() => {
-    // Timeout to prevent slow loading (2s max)
     const timeout = setTimeout(() => {
       setState((s) => {
         if (s.loading) return { ...s, loading: false }
         return s
       })
-    }, 2000)
+    }, 2000) // Max wait time for session check
 
-    // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(timeout)
       const user = session?.user ?? null
@@ -67,7 +62,6 @@ export function useAuth() {
       setState((s) => ({ ...s, loading: false }))
     })
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -79,7 +73,6 @@ export function useAuth() {
     return () => subscription.unsubscribe()
   }, [fetchProfile])
 
-  // Sign in with Google
   const signInWithGoogle = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -93,7 +86,6 @@ export function useAuth() {
     }
   }, [])
 
-  // Sign out
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()
     if (error) {

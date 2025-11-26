@@ -15,7 +15,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// Database types
 export interface Profile {
   id: string
   display_name: string
@@ -30,7 +29,6 @@ export interface PartyMember {
   email: string | null
   profile_id: string | null
   created_at: string
-  // Joined profile data (when linked)
   profiles?: Pick<Profile, 'display_name' | 'avatar_url'> | null
 }
 

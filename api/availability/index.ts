@@ -9,15 +9,11 @@ import {
 } from '../lib/supabase'
 import { success, handleError } from '../lib/response'
 
-// Pure date generation using unfold pattern
 const generateDates = (weeks: number): ReadonlyArray<string> => {
   const today = new Date()
   const endDate = addWeeks(today, weeks)
-
-  // Find starting date (today if Thu/Fri, else next Thursday)
   const start = isThursday(today) || isFriday(today) ? today : nextThursday(today)
 
-  // Unfold to generate all Thu/Fri dates
   return Arr.unfold(start, (current) =>
     current <= endDate
       ? {
@@ -28,7 +24,6 @@ const generateDates = (weeks: number): ReadonlyArray<string> => {
   )
 }
 
-// Fetch availability from database
 const fetchAvailability = (fromDate: string, toDate: string) =>
   pipe(
     SupabaseService,
@@ -54,7 +49,7 @@ const fetchAvailability = (fromDate: string, toDate: string) =>
           .order('date', { ascending: true })
       )
     ),
-    // Transform profiles from array to single object (Supabase returns array for joins)
+    // Supabase returns joined data as arrays
     Effect.map(
       Arr.map((item) => ({
         ...item,
@@ -63,7 +58,6 @@ const fetchAvailability = (fromDate: string, toDate: string) =>
     )
   )
 
-// Fetch all profiles (for showing all party members)
 const fetchProfiles = () =>
   pipe(
     SupabaseService,
@@ -77,7 +71,6 @@ const fetchProfiles = () =>
     )
   )
 
-// Compose the full program
 const getAvailability = (weeks: number) => {
   const dates = generateDates(weeks)
   const [fromDate, toDate] = [dates[0], dates[dates.length - 1]]
@@ -95,7 +88,6 @@ const getAvailability = (weeks: number) => {
   )
 }
 
-// Handler
 const handler = (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
