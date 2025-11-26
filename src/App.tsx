@@ -1,34 +1,68 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useAuth } from './hooks/useAuth'
+import { LoginButton } from './components/auth/LoginButton'
+import { ScheduleGrid } from './components/schedule/ScheduleGrid'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { user, profile, loading, signInWithGoogle, signOut, isAuthenticated } =
+    useAuth()
+
+  if (loading) {
+    return (
+      <div className="app loading-screen">
+        <div className="loading-spinner" />
+        <p>Gathering the party...</p>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app login-screen">
+        <div className="login-container">
+          <h1 className="title">Gather Party</h1>
+          <p className="subtitle">D&D Session Scheduler</p>
+          <p className="tagline">
+            "You must gather your party before venturing forth."
+          </p>
+          <LoginButton onClick={signInWithGoogle} />
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="app">
+      <header className="header">
+        <div className="header-left">
+          <h1 className="title">Gather Party</h1>
+        </div>
+        <div className="header-right">
+          <div className="user-info">
+            {profile?.avatar_url && (
+              <img
+                src={profile.avatar_url}
+                alt={profile.display_name}
+                className="user-avatar"
+              />
+            )}
+            <span className="user-name">{profile?.display_name || user?.email}</span>
+          </div>
+          <button onClick={signOut} className="sign-out-button">
+            Sign Out
+          </button>
+        </div>
+      </header>
+
+      <main className="main">
+        <ScheduleGrid />
+      </main>
+
+      <footer className="footer">
+        <p>Mark your availability for upcoming Thursday and Friday sessions.</p>
+        <p className="hint">Click a cell in your row to toggle availability.</p>
+      </footer>
+    </div>
   )
 }
 
