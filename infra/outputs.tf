@@ -18,14 +18,6 @@ output "supabase_url" {
   value       = "https://${supabase_project.main.id}.supabase.co"
 }
 
-output "supabase_anon_key" {
-  description = "Supabase anonymous key"
-  value       = supabase_project.main.anon_key
-  sensitive   = true
-}
-
-output "supabase_service_role_key" {
-  description = "Supabase service role key"
-  value       = supabase_project.main.service_role_key
-  sensitive   = true
-}
+# Note: Supabase anon_key and service_role_key must be retrieved from
+# the Supabase dashboard and added to Vercel env vars manually.
+# Dashboard: https://supabase.com/dashboard/project/{project_id}/settings/api

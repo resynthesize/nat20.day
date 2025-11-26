@@ -48,7 +48,7 @@ const upsertAvailability = (userId: string, date: string, available: boolean) =>
   Effect.gen(function* () {
     const { client } = yield* SupabaseService
 
-    const { data, error: dbError } = yield* Effect.promise(() =>
+    const result = yield* Effect.promise(() =>
       client
         .from('availability')
         .upsert(
@@ -59,11 +59,11 @@ const upsertAvailability = (userId: string, date: string, available: boolean) =>
         .single()
     )
 
-    if (dbError) {
-      return yield* Effect.fail(new DatabaseError(dbError.message, dbError.code))
+    if (result.error) {
+      return yield* Effect.fail(new DatabaseError(result.error.message, result.error.code))
     }
 
-    return data
+    return result.data
   })
 
 // Delete availability (when setting to null/undefined)
@@ -71,12 +71,12 @@ const deleteAvailability = (userId: string, date: string) =>
   Effect.gen(function* () {
     const { client } = yield* SupabaseService
 
-    const { error: dbError } = yield* Effect.promise(() =>
+    const result = yield* Effect.promise(() =>
       client.from('availability').delete().eq('user_id', userId).eq('date', date)
     )
 
-    if (dbError) {
-      return yield* Effect.fail(new DatabaseError(dbError.message, dbError.code))
+    if (result.error) {
+      return yield* Effect.fail(new DatabaseError(result.error.message, result.error.code))
     }
 
     return null

@@ -43,7 +43,7 @@ const fetchAvailability = (fromDate: string, toDate: string) =>
   Effect.gen(function* () {
     const { client } = yield* SupabaseService
 
-    const { data, error } = yield* Effect.promise(() =>
+    const result = yield* Effect.promise(() =>
       client
         .from('availability')
         .select(
@@ -64,11 +64,17 @@ const fetchAvailability = (fromDate: string, toDate: string) =>
         .order('date', { ascending: true })
     )
 
-    if (error) {
-      return yield* Effect.fail(new DatabaseError(error.message, error.code))
+    if (result.error) {
+      return yield* Effect.fail(new DatabaseError(result.error.message, result.error.code))
     }
 
-    return data as AvailabilityWithProfile[]
+    // Transform profiles from array to single object (Supabase returns array for joins)
+    const availability = (result.data ?? []).map((item: Record<string, unknown>) => ({
+      ...item,
+      profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+    })) as AvailabilityWithProfile[]
+
+    return availability
   })
 
 // Fetch all profiles (for showing all party members)
@@ -76,15 +82,15 @@ const fetchProfiles = () =>
   Effect.gen(function* () {
     const { client } = yield* SupabaseService
 
-    const { data, error } = yield* Effect.promise(() =>
+    const result = yield* Effect.promise(() =>
       client.from('profiles').select('id, display_name, avatar_url').order('display_name')
     )
 
-    if (error) {
-      return yield* Effect.fail(new DatabaseError(error.message, error.code))
+    if (result.error) {
+      return yield* Effect.fail(new DatabaseError(result.error.message, result.error.code))
     }
 
-    return data
+    return result.data
   })
 
 // Main handler

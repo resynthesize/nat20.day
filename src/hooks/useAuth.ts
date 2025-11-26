@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { User, Session } from '@supabase/supabase-js'
-import { supabase, Profile } from '../lib/supabase'
+import type { User, Session } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
+import type { Profile } from '../lib/supabase'
 
 interface AuthState {
   user: User | null
@@ -17,23 +18,42 @@ export function useAuth() {
     loading: true,
   })
 
-  // Fetch profile for a user
+  // Fetch profile for a user (created automatically by DB trigger on signup)
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
+
+    if (error) {
+      console.error('Error fetching profile:', error)
+      return null
+    }
+
     return data as Profile | null
   }, [])
 
   // Initialize auth state
   useEffect(() => {
+    // Timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      setState((s) => {
+        if (s.loading) return { ...s, loading: false }
+        return s
+      })
+    }, 5000)
+
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeout)
       const user = session?.user ?? null
       const profile = user ? await fetchProfile(user.id) : null
       setState({ user, profile, session, loading: false })
+    }).catch((err) => {
+      clearTimeout(timeout)
+      console.error('Error getting session:', err)
+      setState((s) => ({ ...s, loading: false }))
     })
 
     // Listen for auth changes

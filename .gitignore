@@ -35,3 +35,5 @@ infra/.terraform.lock.hcl
 
 # Supabase
 supabase/.temp/
+supabase/seed.sql
+.env*.local

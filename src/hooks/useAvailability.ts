@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase, Profile, AvailabilityWithProfile } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import type { PartyMember, AvailabilityWithMember } from '../lib/supabase'
 import { generateDates } from '../lib/dates'
 
 interface AvailabilityState {
   dates: string[]
-  profiles: Profile[]
-  availability: AvailabilityWithProfile[]
+  partyMembers: PartyMember[]
+  availability: AvailabilityWithMember[]
   loading: boolean
   error: string | null
 }
@@ -13,51 +14,74 @@ interface AvailabilityState {
 export function useAvailability() {
   const [state, setState] = useState<AvailabilityState>({
     dates: [],
-    profiles: [],
+    partyMembers: [],
     availability: [],
     loading: true,
     error: null,
   })
 
-  // Fetch all data
-  const fetchData = useCallback(async () => {
-    setState((s) => ({ ...s, loading: true, error: null }))
+  // Fetch all data (showLoading=false for background refetches)
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setState((s) => ({ ...s, loading: true, error: null }))
+    }
 
     try {
       const dates = generateDates(8)
       const fromDate = dates[0]
       const toDate = dates[dates.length - 1]
 
-      // Fetch profiles and availability in parallel
-      const [profilesResult, availabilityResult] = await Promise.all([
-        supabase.from('profiles').select('*').order('display_name'),
+      // Fetch party members (with linked profile data) and availability in parallel
+      const [membersResult, availabilityResult] = await Promise.all([
         supabase
-          .from('availability')
-          .select(
-            `
+          .from('party_members')
+          .select(`
             id,
-            user_id,
-            date,
-            available,
-            updated_at,
-            profiles!inner (
+            name,
+            email,
+            profile_id,
+            created_at,
+            profiles (
               display_name,
               avatar_url
             )
-          `
-          )
+          `)
+          .order('name'),
+        supabase
+          .from('availability')
+          .select(`
+            id,
+            party_member_id,
+            date,
+            available,
+            updated_at,
+            party_members!inner (
+              name
+            )
+          `)
           .gte('date', fromDate)
           .lte('date', toDate)
           .order('date'),
       ])
 
-      if (profilesResult.error) throw profilesResult.error
+      if (membersResult.error) throw membersResult.error
       if (availabilityResult.error) throw availabilityResult.error
+
+      // Transform data - Supabase returns profiles as array sometimes
+      const partyMembers = membersResult.data.map((item) => ({
+        ...item,
+        profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+      })) as PartyMember[]
+
+      const availability = availabilityResult.data.map((item) => ({
+        ...item,
+        party_members: Array.isArray(item.party_members) ? item.party_members[0] : item.party_members,
+      })) as AvailabilityWithMember[]
 
       setState({
         dates,
-        profiles: profilesResult.data as Profile[],
-        availability: availabilityResult.data as AvailabilityWithProfile[],
+        partyMembers,
+        availability,
         loading: false,
         error: null,
       })
@@ -70,42 +94,39 @@ export function useAvailability() {
     }
   }, [])
 
-  // Set availability for a date
+  // Set availability for a party member on a date
   const setAvailability = useCallback(
-    async (userId: string, date: string, available: boolean) => {
+    async (memberId: string, date: string, available: boolean) => {
       // Optimistic update
       setState((s) => {
         const existing = s.availability.find(
-          (a) => a.user_id === userId && a.date === date
+          (a) => a.party_member_id === memberId && a.date === date
         )
 
         if (existing) {
           return {
             ...s,
             availability: s.availability.map((a) =>
-              a.user_id === userId && a.date === date ? { ...a, available } : a
+              a.party_member_id === memberId && a.date === date ? { ...a, available } : a
             ),
           }
         }
 
-        // Add new entry (we'll need profile info)
-        const profile = s.profiles.find((p) => p.id === userId)
-        if (!profile) return s
+        // Add new entry
+        const member = s.partyMembers.find((m) => m.id === memberId)
+        if (!member) return s
 
         return {
           ...s,
           availability: [
             ...s.availability,
             {
-              id: `temp-${userId}-${date}`,
-              user_id: userId,
+              id: `temp-${memberId}-${date}`,
+              party_member_id: memberId,
               date,
               available,
               updated_at: new Date().toISOString(),
-              profiles: {
-                display_name: profile.display_name,
-                avatar_url: profile.avatar_url,
-              },
+              party_members: { name: member.name },
             },
           ],
         }
@@ -114,25 +135,28 @@ export function useAvailability() {
       // Persist to database
       const { error } = await supabase
         .from('availability')
-        .upsert({ user_id: userId, date, available }, { onConflict: 'user_id,date' })
+        .upsert(
+          { party_member_id: memberId, date, available },
+          { onConflict: 'party_member_id,date' }
+        )
 
       if (error) {
         console.error('Error setting availability:', error)
         // Revert on error
-        fetchData()
+        fetchData(false)
       }
     },
     [fetchData]
   )
 
-  // Clear availability for a date
+  // Clear availability for a party member on a date
   const clearAvailability = useCallback(
-    async (userId: string, date: string) => {
+    async (memberId: string, date: string) => {
       // Optimistic update
       setState((s) => ({
         ...s,
         availability: s.availability.filter(
-          (a) => !(a.user_id === userId && a.date === date)
+          (a) => !(a.party_member_id === memberId && a.date === date)
         ),
       }))
 
@@ -140,12 +164,12 @@ export function useAvailability() {
       const { error } = await supabase
         .from('availability')
         .delete()
-        .eq('user_id', userId)
+        .eq('party_member_id', memberId)
         .eq('date', date)
 
       if (error) {
         console.error('Error clearing availability:', error)
-        fetchData()
+        fetchData(false)
       }
     },
     [fetchData]
@@ -164,8 +188,8 @@ export function useAvailability() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'availability' },
         () => {
-          // Refetch on any change
-          fetchData()
+          // Refetch on any change (no loading spinner for background updates)
+          fetchData(false)
         }
       )
       .subscribe()
@@ -175,21 +199,20 @@ export function useAvailability() {
     }
   }, [fetchData])
 
-  // Helper to get availability for a specific user and date
+  // Helper to get availability for a specific member and date
   const getAvailability = useCallback(
-    (userId: string, date: string) => {
+    (memberId: string, date: string) => {
       return state.availability.find(
-        (a) => a.user_id === userId && a.date === date
+        (a) => a.party_member_id === memberId && a.date === date
       )
     },
     [state.availability]
   )
 
-  // Helper to count available users for a date
+  // Helper to count available members for a date
   const countAvailable = useCallback(
     (date: string) => {
-      return state.availability.filter((a) => a.date === date && a.available)
-        .length
+      return state.availability.filter((a) => a.date === date && a.available).length
     },
     [state.availability]
   )

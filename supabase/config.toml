@@ -1,9 +1,6 @@
 # Supabase CLI configuration
 # See: https://supabase.com/docs/guides/cli/config
 
-[project]
-project_id = "" # Set after running: supabase link
-
 [api]
 enabled = true
 port = 54321

@@ -1,0 +1,28 @@
+-- Example seed data for party members
+-- Copy this to seed.sql and fill in your actual data
+-- seed.sql is gitignored
+
+-- Clear existing party members (if re-seeding)
+DELETE FROM party_members;
+
+-- Insert party members
+-- email is optional - used for auto-linking when they sign in
+INSERT INTO party_members (name, email) VALUES
+  ('Player1', 'player1@example.com'),
+  ('Player2', NULL),
+  ('Player3', NULL);
+
+-- Link any existing profiles to party members by email
+UPDATE party_members pm
+SET profile_id = p.id
+FROM profiles p
+JOIN auth.users u ON p.id = u.id
+WHERE u.email = pm.email;
+
+-- Set admin(s) by email
+UPDATE profiles SET is_admin = true
+WHERE id IN (
+  SELECT p.id FROM profiles p
+  JOIN auth.users u ON p.id = u.id
+  WHERE u.email = 'admin@example.com'
+);

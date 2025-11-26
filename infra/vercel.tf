@@ -1,16 +1,17 @@
-# Vercel Project
+# Vercel Project with GitHub integration
+# Pushes to main branch auto-deploy to production
 resource "vercel_project" "main" {
   name      = var.project_name
   framework = "vite"
 
-  git_repository = {
-    type = "github"
-    repo = var.github_repo
-  }
-
   build_command    = "npm run build"
   output_directory = "dist"
   install_command  = "npm install"
+
+  git_repository = {
+    type = "github"
+    repo = "resynthesize/nat20.day"
+  }
 }
 
 # Production domain
@@ -26,6 +27,8 @@ resource "vercel_project_domain" "www" {
 
   redirect             = var.domain
   redirect_status_code = 308
+
+  depends_on = [vercel_project_domain.main]
 }
 
 # Environment variables
@@ -36,16 +39,6 @@ resource "vercel_project_environment_variable" "supabase_url" {
   target     = ["production", "preview", "development"]
 }
 
-resource "vercel_project_environment_variable" "supabase_anon_key" {
-  project_id = vercel_project.main.id
-  key        = "VITE_SUPABASE_ANON_KEY"
-  value      = supabase_project.main.anon_key
-  target     = ["production", "preview", "development"]
-}
-
-resource "vercel_project_environment_variable" "supabase_service_role_key" {
-  project_id = vercel_project.main.id
-  key        = "SUPABASE_SERVICE_ROLE_KEY"
-  value      = supabase_project.main.service_role_key
-  target     = ["production", "preview"]
-}
+# Note: VITE_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY must be added
+# manually in Vercel dashboard after Supabase project is created.
+# Get keys from: https://supabase.com/dashboard/project/{project_id}/settings/api

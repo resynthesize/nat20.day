@@ -7,24 +7,41 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+})
 
 // Database types
 export interface Profile {
   id: string
   display_name: string
   avatar_url: string | null
+  is_admin: boolean
   created_at: string
+}
+
+export interface PartyMember {
+  id: string
+  name: string
+  email: string | null
+  profile_id: string | null
+  created_at: string
+  // Joined profile data (when linked)
+  profiles?: Pick<Profile, 'display_name' | 'avatar_url'> | null
 }
 
 export interface Availability {
   id: string
-  user_id: string
+  party_member_id: string
   date: string
   available: boolean
   updated_at: string
 }
 
-export interface AvailabilityWithProfile extends Availability {
-  profiles: Pick<Profile, 'display_name' | 'avatar_url'>
+export interface AvailabilityWithMember extends Availability {
+  party_members: Pick<PartyMember, 'name'>
 }
