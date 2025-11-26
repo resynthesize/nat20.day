@@ -18,7 +18,7 @@ terraform {
 
   # Uncomment for remote state (recommended for production)
   # backend "s3" {
-  #   bucket = "gather-party-tfstate"
+  #   bucket = "nat20-day-tfstate"
   #   key    = "terraform.tfstate"
   #   region = "us-east-1"
   # }

@@ -21,13 +21,13 @@ variable "supabase_access_token" {
 variable "project_name" {
   description = "Project name"
   type        = string
-  default     = "gather-party"
+  default     = "nat20-day"
 }
 
 variable "domain" {
   description = "Domain name"
   type        = string
-  default     = "gather.party"
+  default     = "nat20.day"
 }
 
 variable "github_repo" {

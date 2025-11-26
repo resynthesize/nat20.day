@@ -57,7 +57,7 @@ terraform output -raw supabase_anon_key
 
 These cannot be automated via Terraform:
 
-1. **Buy domain**: Purchase `gather.party` on Cloudflare (~$4.16)
+1. **Buy domain**: Purchase `nat20.day` on Cloudflare (~$8.18)
 2. **Add domain to Cloudflare**: Get the zone ID after adding
 3. **Create Google OAuth credentials**: In GCP Console, create OAuth 2.0 credentials
 4. **Configure Supabase Auth**: After `terraform apply`, enable Google provider in Supabase dashboard
