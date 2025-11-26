@@ -10,12 +10,23 @@ interface AuthState {
   loading: boolean
 }
 
+// Check if there might be a session stored (quick sync check)
+function hasStoredSession(): boolean {
+  try {
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+    return !!key && !!localStorage.getItem(key)
+  } catch {
+    return false
+  }
+}
+
 export function useAuth() {
+  // Only show loading if there might be a stored session
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
     session: null,
-    loading: true,
+    loading: hasStoredSession(),
   })
 
   // Fetch profile for a user (created automatically by DB trigger on signup)
@@ -36,13 +47,13 @@ export function useAuth() {
 
   // Initialize auth state
   useEffect(() => {
-    // Timeout to prevent infinite loading
+    // Timeout to prevent slow loading (2s max)
     const timeout = setTimeout(() => {
       setState((s) => {
         if (s.loading) return { ...s, loading: false }
         return s
       })
-    }, 5000)
+    }, 2000)
 
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
