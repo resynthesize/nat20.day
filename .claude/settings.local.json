@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:tld-list.com)",
+      "WebFetch(domain:cfdomainpricing.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
