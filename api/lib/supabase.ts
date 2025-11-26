@@ -1,5 +1,6 @@
-import { Context, Effect, Layer } from 'effect'
-import { createClient, SupabaseClient, User } from '@supabase/supabase-js'
+import { Context, Effect, Layer, pipe, Option } from 'effect'
+import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
+import { AuthError, ConfigError, DatabaseError } from './errors'
 
 // Database types
 export interface Profile {
@@ -21,65 +22,126 @@ export interface AvailabilityWithProfile extends Availability {
   profiles: Pick<Profile, 'display_name' | 'avatar_url'>
 }
 
-// Supabase Service
+// Supabase Service interface
+export interface SupabaseServiceImpl {
+  readonly client: SupabaseClient
+  readonly getUser: (authHeader: string | null) => Effect.Effect<User, AuthError>
+}
+
 export class SupabaseService extends Context.Tag('SupabaseService')<
   SupabaseService,
-  {
-    readonly client: SupabaseClient
-    readonly getUser: (authHeader: string | null) => Effect.Effect<User, AuthError>
-  }
+  SupabaseServiceImpl
 >() {}
 
-// Errors
-export class AuthError {
-  readonly _tag = 'AuthError'
-  constructor(readonly message: string) {}
-}
+// Parse bearer token from header
+const parseAuthHeader = (header: string | null): Option.Option<string> =>
+  pipe(
+    Option.fromNullable(header),
+    Option.filter((h) => h.startsWith('Bearer ')),
+    Option.map((h) => h.slice(7))
+  )
 
-export class DatabaseError {
-  readonly _tag = 'DatabaseError'
-  constructor(readonly message: string, readonly code?: string) {}
-}
+// Get user from auth token
+const makeGetUser =
+  (client: SupabaseClient) =>
+  (authHeader: string | null): Effect.Effect<User, AuthError> =>
+    pipe(
+      parseAuthHeader(authHeader),
+      Effect.fromOption(() => new AuthError({ message: 'Missing or invalid authorization header' })),
+      Effect.flatMap((token) =>
+        Effect.tryPromise({
+          try: () => client.auth.getUser(token),
+          catch: () => new AuthError({ message: 'Failed to verify token' }),
+        })
+      ),
+      Effect.flatMap(({ data, error }) =>
+        error || !data.user
+          ? Effect.fail(new AuthError({ message: error?.message ?? 'Invalid token' }))
+          : Effect.succeed(data.user)
+      )
+    )
 
-// Create Supabase client
-const createSupabaseClient = () => {
-  const url = process.env.VITE_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!url || !serviceKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  return createClient(url, serviceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
-
-// Get user from auth header
-const getUser = (client: SupabaseClient) => (authHeader: string | null) =>
-  Effect.gen(function* () {
-    if (!authHeader?.startsWith('Bearer ')) {
-      return yield* Effect.fail(new AuthError('Missing or invalid authorization header'))
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data, error } = yield* Effect.promise(() => client.auth.getUser(token))
-
-    if (error || !data.user) {
-      return yield* Effect.fail(new AuthError(error?.message ?? 'Invalid token'))
-    }
-
-    return data.user
-  })
+// Create Supabase client effect
+const makeClient: Effect.Effect<SupabaseClient, ConfigError> = pipe(
+  Effect.all({
+    url: pipe(
+      Effect.fromNullable(process.env.VITE_SUPABASE_URL),
+      Effect.mapError(() => new ConfigError({ message: 'Missing VITE_SUPABASE_URL' }))
+    ),
+    serviceKey: pipe(
+      Effect.fromNullable(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      Effect.mapError(() => new ConfigError({ message: 'Missing SUPABASE_SERVICE_ROLE_KEY' }))
+    ),
+  }),
+  Effect.map(({ url, serviceKey }) =>
+    createClient(url, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  )
+)
 
 // Live layer for Supabase service
-export const SupabaseServiceLive = Layer.sync(SupabaseService, () => {
-  const client = createSupabaseClient()
-  return {
-    client,
-    getUser: getUser(client),
-  }
-})
+export const SupabaseServiceLive = Layer.effect(
+  SupabaseService,
+  pipe(
+    makeClient,
+    Effect.map((client) => ({
+      client,
+      getUser: makeGetUser(client),
+    })),
+    Effect.catchTag('ConfigError', (e) => Effect.die(e))
+  )
+)
+
+// Helper to run a query and handle Supabase's error-in-response pattern
+export const runQuery = <T>(
+  query: Promise<{ data: T | null; error: { message: string; code?: string } | null }>
+): Effect.Effect<T, DatabaseError> =>
+  pipe(
+    Effect.tryPromise({
+      try: () => query,
+      catch: (e) => new DatabaseError({ message: String(e) }),
+    }),
+    Effect.flatMap(({ data, error }) =>
+      error
+        ? Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
+        : data !== null
+          ? Effect.succeed(data)
+          : Effect.fail(new DatabaseError({ message: 'No data returned' }))
+    )
+  )
+
+// Helper for queries that may return null (single row)
+export const runQueryOptional = <T>(
+  query: Promise<{ data: T | null; error: { message: string; code?: string } | null }>
+): Effect.Effect<Option.Option<T>, DatabaseError> =>
+  pipe(
+    Effect.tryPromise({
+      try: () => query,
+      catch: (e) => new DatabaseError({ message: String(e) }),
+    }),
+    Effect.flatMap(({ data, error }) =>
+      error
+        ? Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
+        : Effect.succeed(Option.fromNullable(data))
+    )
+  )
+
+// Helper for mutations that don't return data
+export const runMutation = (
+  query: Promise<{ error: { message: string; code?: string } | null }>
+): Effect.Effect<void, DatabaseError> =>
+  pipe(
+    Effect.tryPromise({
+      try: () => query,
+      catch: (e) => new DatabaseError({ message: String(e) }),
+    }),
+    Effect.flatMap(({ error }) =>
+      error
+        ? Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
+        : Effect.void
+    )
+  )

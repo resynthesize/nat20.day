@@ -1,110 +1,88 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { Effect, pipe } from 'effect'
+import { Effect, pipe, Array as Arr } from 'effect'
 import { addWeeks, format, nextThursday, nextFriday, isThursday, isFriday } from 'date-fns'
 import {
   SupabaseService,
   SupabaseServiceLive,
-  DatabaseError,
+  runQuery,
   type AvailabilityWithProfile,
 } from '../lib/supabase'
 import { success, handleError } from '../lib/response'
 
-// Generate Thursday/Friday dates for the next N weeks
-const generateDates = (weeks: number): string[] => {
-  const dates: string[] = []
+// Pure date generation using unfold pattern
+const generateDates = (weeks: number): ReadonlyArray<string> => {
   const today = new Date()
   const endDate = addWeeks(today, weeks)
 
-  let current = today
+  // Find starting date (today if Thu/Fri, else next Thursday)
+  const start = isThursday(today) || isFriday(today) ? today : nextThursday(today)
 
-  // Start from today if it's Thu/Fri, otherwise next Thu
-  if (!isThursday(current) && !isFriday(current)) {
-    current = nextThursday(current)
-  }
-
-  while (current <= endDate) {
-    if (isThursday(current) || isFriday(current)) {
-      dates.push(format(current, 'yyyy-MM-dd'))
-    }
-
-    // Move to next day
-    if (isThursday(current)) {
-      current = nextFriday(current)
-    } else {
-      current = nextThursday(current)
-    }
-  }
-
-  return dates
+  // Unfold to generate all Thu/Fri dates
+  return Arr.unfold(start, (current) =>
+    current <= endDate
+      ? {
+          value: format(current, 'yyyy-MM-dd'),
+          next: isThursday(current) ? nextFriday(current) : nextThursday(current),
+        }
+      : undefined
+  )
 }
 
 // Fetch availability from database
 const fetchAvailability = (fromDate: string, toDate: string) =>
-  Effect.gen(function* () {
-    const { client } = yield* SupabaseService
-
-    const result = yield* Effect.promise(() =>
-      client
-        .from('availability')
-        .select(
+  pipe(
+    SupabaseService,
+    Effect.flatMap(({ client }) =>
+      runQuery<AvailabilityWithProfile[]>(
+        client
+          .from('availability')
+          .select(
+            `
+            id,
+            user_id,
+            date,
+            available,
+            updated_at,
+            profiles!inner (
+              display_name,
+              avatar_url
+            )
           `
-          id,
-          user_id,
-          date,
-          available,
-          updated_at,
-          profiles!inner (
-            display_name,
-            avatar_url
           )
-        `
-        )
-        .gte('date', fromDate)
-        .lte('date', toDate)
-        .order('date', { ascending: true })
-    )
-
-    if (result.error) {
-      return yield* Effect.fail(new DatabaseError(result.error.message, result.error.code))
-    }
-
+          .gte('date', fromDate)
+          .lte('date', toDate)
+          .order('date', { ascending: true })
+      )
+    ),
     // Transform profiles from array to single object (Supabase returns array for joins)
-    const availability = (result.data ?? []).map((item: Record<string, unknown>) => ({
-      ...item,
-      profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
-    })) as AvailabilityWithProfile[]
-
-    return availability
-  })
+    Effect.map(
+      Arr.map((item) => ({
+        ...item,
+        profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+      }))
+    )
+  )
 
 // Fetch all profiles (for showing all party members)
 const fetchProfiles = () =>
-  Effect.gen(function* () {
-    const { client } = yield* SupabaseService
-
-    const result = yield* Effect.promise(() =>
-      client.from('profiles').select('id, display_name, avatar_url').order('display_name')
+  pipe(
+    SupabaseService,
+    Effect.flatMap(({ client }) =>
+      runQuery(
+        client
+          .from('profiles')
+          .select('id, display_name, avatar_url')
+          .order('display_name')
+      )
     )
+  )
 
-    if (result.error) {
-      return yield* Effect.fail(new DatabaseError(result.error.message, result.error.code))
-    }
-
-    return result.data
-  })
-
-// Main handler
-const handler = (req: VercelRequest, res: VercelResponse) => {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  const weeks = 8
+// Compose the full program
+const getAvailability = (weeks: number) => {
   const dates = generateDates(weeks)
-  const fromDate = dates[0]
-  const toDate = dates[dates.length - 1]
+  const [fromDate, toDate] = [dates[0], dates[dates.length - 1]]
 
-  const program = pipe(
+  return pipe(
     Effect.all({
       availability: fetchAvailability(fromDate, toDate),
       profiles: fetchProfiles(),
@@ -113,9 +91,17 @@ const handler = (req: VercelRequest, res: VercelResponse) => {
       dates,
       availability,
       profiles,
-    })),
-    Effect.provide(SupabaseServiceLive)
+    }))
   )
+}
+
+// Handler
+const handler = (req: VercelRequest, res: VercelResponse) => {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const program = pipe(getAvailability(8), Effect.provide(SupabaseServiceLive))
 
   return Effect.runPromise(program)
     .then((data) => success(res, data))
