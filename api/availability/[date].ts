@@ -3,8 +3,14 @@ import { Effect, pipe, Schema } from 'effect'
 import { isThursday, isFriday, parseISO, isValid } from 'date-fns'
 import { SupabaseService, SupabaseServiceLive, runQuery, runMutation } from '../lib/supabase'
 import { ValidationError } from '../lib/errors'
-import { SetAvailabilityInput } from '../lib/schemas'
+import { SetAvailabilityInput, DatePathParam } from '../lib/schemas'
 import { success, handleError } from '../lib/response'
+
+const parsePathParams = (query: VercelRequest['query']) =>
+  pipe(
+    Schema.decodeUnknown(DatePathParam)(query),
+    Effect.mapError(() => new ValidationError({ message: 'Missing date parameter' }))
+  )
 
 const validateDate = (dateStr: string): Effect.Effect<string, ValidationError> =>
   pipe(
@@ -79,14 +85,15 @@ const handleDelete = (req: VercelRequest, dateParam: string) =>
   )
 
 const handler = (req: VercelRequest, res: VercelResponse) => {
-  const dateParam = req.query.date as string
-
   const program = pipe(
-    req.method === 'PUT'
-      ? handlePut(req, dateParam)
-      : req.method === 'DELETE'
-        ? handleDelete(req, dateParam)
-        : Effect.fail(new ValidationError({ message: 'Method not allowed' })),
+    parsePathParams(req.query),
+    Effect.flatMap(({ date }) =>
+      req.method === 'PUT'
+        ? handlePut(req, date)
+        : req.method === 'DELETE'
+          ? handleDelete(req, date)
+          : Effect.fail(new ValidationError({ message: 'Method not allowed' }))
+    ),
     Effect.provide(SupabaseServiceLive)
   )
 

@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import type { PartyMember, AvailabilityWithMember } from '../lib/supabase'
+import {
+  parsePartyMembers,
+  parseAvailabilityWithMembers,
+  type PartyMember,
+  type AvailabilityWithMember,
+} from '../lib/schemas'
 import { generateDates } from '../lib/dates'
 
 interface AvailabilityState {
@@ -65,21 +70,21 @@ export function useAvailability() {
       if (membersResult.error) throw membersResult.error
       if (availabilityResult.error) throw availabilityResult.error
 
-      // Supabase returns joined data as arrays
-      const partyMembers = membersResult.data.map((item) => ({
+      // Supabase returns joined data as arrays - normalize before parsing
+      const normalizedMembers = (membersResult.data ?? []).map((item) => ({
         ...item,
         profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
-      })) as PartyMember[]
+      }))
 
-      const availability = availabilityResult.data.map((item) => ({
+      const normalizedAvailability = (availabilityResult.data ?? []).map((item) => ({
         ...item,
         party_members: Array.isArray(item.party_members) ? item.party_members[0] : item.party_members,
-      })) as AvailabilityWithMember[]
+      }))
 
       setState({
         dates,
-        partyMembers,
-        availability,
+        partyMembers: parsePartyMembers(normalizedMembers),
+        availability: parseAvailabilityWithMembers(normalizedAvailability),
         loading: false,
         error: null,
       })
@@ -94,7 +99,6 @@ export function useAvailability() {
 
   const setAvailability = useCallback(
     async (memberId: string, date: string, available: boolean) => {
-      // Optimistic update
       setState((s) => {
         const existing = s.availability.find(
           (a) => a.party_member_id === memberId && a.date === date
@@ -137,7 +141,7 @@ export function useAvailability() {
 
       if (error) {
         console.error('Error setting availability:', error)
-        fetchData(false) // Revert on error
+        fetchData(false)
       }
     },
     [fetchData]
@@ -145,7 +149,6 @@ export function useAvailability() {
 
   const clearAvailability = useCallback(
     async (memberId: string, date: string) => {
-      // Optimistic update
       setState((s) => ({
         ...s,
         availability: s.availability.filter(
@@ -177,7 +180,7 @@ export function useAvailability() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'availability' },
-        () => fetchData(false) // Background refetch without loading spinner
+        () => fetchData(false)
       )
       .subscribe()
 

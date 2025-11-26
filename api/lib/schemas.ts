@@ -49,3 +49,9 @@ export const ErrorResponse = Schema.Struct({
     message: Schema.String,
   }),
 })
+
+export const DatePathParam = Schema.Struct({
+  date: Schema.String,
+})
+
+export type DatePathParam = Schema.Schema.Type<typeof DatePathParam>

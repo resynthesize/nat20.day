@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { Profile } from '../lib/supabase'
+import { parseProfile, type Profile } from '../lib/schemas'
 
 interface AuthState {
   user: User | null
@@ -24,11 +24,10 @@ export function useAuth() {
     user: null,
     profile: null,
     session: null,
-    loading: hasStoredSession(), // Only show loading if there might be a stored session
+    loading: hasStoredSession(),
   })
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    // Profile is created automatically by DB trigger on signup
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -40,7 +39,7 @@ export function useAuth() {
       return null
     }
 
-    return data as Profile | null
+    return parseProfile(data)
   }, [])
 
   useEffect(() => {
@@ -49,7 +48,7 @@ export function useAuth() {
         if (s.loading) return { ...s, loading: false }
         return s
       })
-    }, 2000) // Max wait time for session check
+    }, 2000)
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(timeout)

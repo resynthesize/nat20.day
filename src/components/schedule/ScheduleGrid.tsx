@@ -1,7 +1,7 @@
 import { useAuth } from '../../hooks/useAuth'
 import { useAvailability } from '../../hooks/useAvailability'
 import { formatDateDisplay, getDayOfWeek } from '../../lib/dates'
-import type { PartyMember } from '../../lib/supabase'
+import type { PartyMember } from '../../lib/schemas'
 
 export function ScheduleGrid() {
   const { user, profile } = useAuth()
