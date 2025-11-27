@@ -233,13 +233,12 @@ body {
 
 .schedule-grid {
   display: grid;
-  grid-template-columns: minmax(140px, 200px) repeat(var(--date-columns, 16), minmax(48px, 72px));
+  grid-template-columns: 180px repeat(var(--date-columns, 16), 64px);
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
   width: fit-content;
-  min-width: 100%;
 }
 
 /* Grid Header */
@@ -253,13 +252,15 @@ body {
 }
 
 .player-label {
-  padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
   font-family: var(--font-heading);
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
 }
 
 .date-header {
@@ -347,19 +348,27 @@ body {
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .avatar {
   width: 24px;
   height: 24px;
+  min-width: 24px;
   border-radius: 50%;
   border: 1px solid var(--border-color);
+  object-fit: cover;
 }
 
 .player-name {
   font-family: var(--font-body);
   font-size: 0.8rem;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .you-badge {
@@ -514,6 +523,7 @@ body {
 .avatar-placeholder {
   width: 24px;
   height: 24px;
+  min-width: 24px;
   border-radius: 50%;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
