@@ -12,6 +12,7 @@ export function ScheduleGrid() {
     error,
     getAvailability,
     setAvailability,
+    clearAvailability,
     countAvailable,
   } = useAvailability()
 
@@ -31,8 +32,14 @@ export function ScheduleGrid() {
     if (!isAdmin && !isOwnRow) return
 
     const current = getAvailability(memberId, date)
-    const newValue = current ? !current.available : true
-    setAvailability(memberId, date, newValue)
+    // Tri-state cycle: unset → available → unavailable → unset
+    if (!current) {
+      setAvailability(memberId, date, true)
+    } else if (current.available) {
+      setAvailability(memberId, date, false)
+    } else {
+      clearAvailability(memberId, date)
+    }
   }
 
   const isAllAvailable = (date: string) => {
