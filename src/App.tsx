@@ -40,7 +40,7 @@ function App() {
     return (
       <div className="app login-screen">
         <div className="login-container">
-          <h1 className="title">NAT 20</h1>
+          <h1 className="title">nat20.day</h1>
           <p className="subtitle">D&D Session Scheduler</p>
           <p className="tagline">"{tagline}"</p>
           <LoginButton onClick={signInWithGoogle} />
@@ -53,7 +53,7 @@ function App() {
     <div className="app">
       <header className="header">
         <div className="header-left">
-          <h1 className="title">NAT 20</h1>
+          <h1 className="title">nat20.day</h1>
         </div>
         <div className="header-right">
           <Link to="/profile" className="user-info">
