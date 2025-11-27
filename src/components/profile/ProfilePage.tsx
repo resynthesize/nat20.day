@@ -5,22 +5,24 @@ import { useProfile } from '../../hooks/useProfile'
 
 export function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth()
-  const [displayName, setDisplayName] = useState(profile?.display_name || '')
-  const [hasChanges, setHasChanges] = useState(false)
+  // Track only the edited value; null means using profile value
+  const [editedName, setEditedName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const displayName = editedName ?? profile?.display_name ?? ''
+  const hasChanges = editedName !== null && editedName !== profile?.display_name
 
   const { uploadAvatar, updateDisplayName, uploading, saving, error, clearError } =
     useProfile({
       userId: user?.id || '',
       onSuccess: () => {
         refreshProfile()
-        setHasChanges(false)
+        setEditedName(null)
       },
     })
 
   const handleDisplayNameChange = (value: string) => {
-    setDisplayName(value)
-    setHasChanges(value !== profile?.display_name)
+    setEditedName(value)
     clearError()
   }
 
