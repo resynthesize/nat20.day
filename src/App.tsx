@@ -98,7 +98,7 @@ function App() {
             rel="noopener noreferrer"
             className="github-link"
           >
-            View source on GitHub
+            github
           </a>
         </p>
       </footer>

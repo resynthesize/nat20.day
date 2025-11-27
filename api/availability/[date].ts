@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { Effect, pipe, Schema } from 'effect'
+import { Effect, pipe, Schema, flow } from 'effect'
 import { isThursday, isFriday, parseISO, isValid } from 'date-fns'
 import { SupabaseService, SupabaseServiceLive, runQuery, runMutation } from '../lib/supabase'
 import { ValidationError } from '../lib/errors'
@@ -8,13 +8,16 @@ import { success, handleError } from '../lib/response'
 
 const parsePathParams = (query: VercelRequest['query']) =>
   pipe(
-    Schema.decodeUnknown(DatePathParam)(query),
+    query, 
+    Schema.decodeUnknown(DatePathParam),
     Effect.mapError(() => new ValidationError({ message: 'Missing date parameter' }))
   )
 
 const validateDate = (dateStr: string): Effect.Effect<string, ValidationError> =>
   pipe(
-    Effect.succeed(parseISO(dateStr)),
+    dateStr,
+    parseISO,
+    Effect.succeed,
     Effect.filterOrFail(
       isValid,
       () => new ValidationError({ message: 'Invalid date format. Use YYYY-MM-DD' })
@@ -28,7 +31,8 @@ const validateDate = (dateStr: string): Effect.Effect<string, ValidationError> =
 
 const validateBody = (body: unknown): Effect.Effect<SetAvailabilityInput, ValidationError> =>
   pipe(
-    Schema.decodeUnknown(SetAvailabilityInput)(body),
+    body, 
+    Schema.decodeUnknown(SetAvailabilityInput),
     Effect.mapError(
       () => new ValidationError({ message: 'Invalid request body. Expected { available: boolean }' })
     )
