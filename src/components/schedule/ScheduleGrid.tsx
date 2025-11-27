@@ -44,7 +44,10 @@ export function ScheduleGrid() {
       {isAdmin && (
         <div className="admin-badge">Admin Mode - You can edit all schedules</div>
       )}
-      <div className="schedule-grid">
+      <div
+        className="schedule-grid"
+        style={{ '--date-columns': dates.length } as React.CSSProperties}
+      >
         <div className="grid-header">
           <div className="player-label">Adventurer</div>
           {dates.map((date) => {
