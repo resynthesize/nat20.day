@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   parsePartyMembers,
@@ -24,6 +24,9 @@ export function useAvailability() {
     loading: true,
     error: null,
   })
+
+  // Skip realtime refreshes during local mutations to prevent flash
+  const mutatingRef = useRef(false)
 
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -149,6 +152,8 @@ export function useAvailability() {
 
   const clearAvailability = useCallback(
     async (memberId: string, date: string) => {
+      mutatingRef.current = true
+
       setState((s) => ({
         ...s,
         availability: s.availability.filter(
@@ -162,8 +167,14 @@ export function useAvailability() {
         .eq('party_member_id', memberId)
         .eq('date', date)
 
+      // Small delay to let realtime event pass before allowing refreshes
+      setTimeout(() => {
+        mutatingRef.current = false
+      }, 500)
+
       if (error) {
         console.error('Error clearing availability:', error)
+        mutatingRef.current = false
         fetchData(false)
       }
     },
@@ -180,7 +191,12 @@ export function useAvailability() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'availability' },
-        () => fetchData(false)
+        () => {
+          // Skip refresh during local mutations to prevent flash
+          if (!mutatingRef.current) {
+            fetchData(false)
+          }
+        }
       )
       .subscribe()
 
