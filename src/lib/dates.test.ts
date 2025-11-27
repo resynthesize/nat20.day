@@ -40,10 +40,10 @@ describe('dates', () => {
   })
 
   describe('formatDateDisplay', () => {
-    it('formats date as "EEE, MMM d"', () => {
-      expect(formatDateDisplay('2024-12-05')).toBe('Thu, Dec 5')
-      expect(formatDateDisplay('2024-12-06')).toBe('Fri, Dec 6')
-      expect(formatDateDisplay('2024-01-15')).toBe('Mon, Jan 15')
+    it('formats date as "MMM d"', () => {
+      expect(formatDateDisplay('2024-12-05')).toBe('Dec 5')
+      expect(formatDateDisplay('2024-12-06')).toBe('Dec 6')
+      expect(formatDateDisplay('2024-01-15')).toBe('Jan 15')
     })
   })
 

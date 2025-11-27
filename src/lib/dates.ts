@@ -28,7 +28,7 @@ export const generateDates = (weeks = 8): string[] => {
 
 export const formatDateDisplay = (dateStr: string): string => {
   const date = parseISO(dateStr)
-  return format(date, 'EEE, MMM d') // "Thu, Dec 5"
+  return format(date, 'MMM d') // "Dec 5"
 }
 
 export const getDayOfWeek = (dateStr: string): string => {

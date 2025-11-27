@@ -43,18 +43,21 @@ const makeGetUser =
   (authHeader: string | null): Effect.Effect<User, AuthError> =>
     pipe(
       parseAuthHeader(authHeader),
-      Effect.fromOption(() => new AuthError({ message: 'Missing or invalid authorization header' })),
-      Effect.flatMap((token) =>
-        Effect.tryPromise({
-          try: () => client.auth.getUser(token),
-          catch: () => new AuthError({ message: 'Failed to verify token' }),
-        })
-      ),
-      Effect.flatMap(({ data, error }) =>
-        error || !data.user
-          ? Effect.fail(new AuthError({ message: error?.message ?? 'Invalid token' }))
-          : Effect.succeed(data.user)
-      )
+      Option.match({
+        onNone: () => Effect.fail(new AuthError({ message: 'Missing or invalid authorization header' })),
+        onSome: (token) =>
+          pipe(
+            Effect.tryPromise({
+              try: () => client.auth.getUser(token),
+              catch: () => new AuthError({ message: 'Failed to verify token' }),
+            }),
+            Effect.flatMap(({ data, error }) =>
+              error || !data.user
+                ? Effect.fail(new AuthError({ message: error?.message ?? 'Invalid token' }))
+                : Effect.succeed(data.user)
+            )
+          ),
+      })
     )
 
 const makeClient: Effect.Effect<SupabaseClient, ConfigError> = pipe(
@@ -92,48 +95,51 @@ export const SupabaseServiceLive = Layer.effect(
 
 // Supabase returns errors in the response body, not as exceptions
 export const runQuery = <T>(
-  query: Promise<{ data: T | null; error: { message: string; code?: string } | null }>
+  query: PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>
 ): Effect.Effect<T, DatabaseError> =>
-  pipe(
-    Effect.tryPromise({
+  Effect.gen(function* () {
+    const { data, error } = yield* Effect.tryPromise({
       try: () => query,
       catch: (e) => new DatabaseError({ message: String(e) }),
-    }),
-    Effect.flatMap(({ data, error }) =>
-      error
-        ? Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
-        : data !== null
-          ? Effect.succeed(data)
-          : Effect.fail(new DatabaseError({ message: 'No data returned' }))
-    )
-  )
+    })
+
+    if (error) {
+      return yield* Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
+    }
+
+    if (data === null) {
+      return yield* Effect.fail(new DatabaseError({ message: 'No data returned' }))
+    }
+
+    return data
+  })
 
 export const runQueryOptional = <T>(
-  query: Promise<{ data: T | null; error: { message: string; code?: string } | null }>
+  query: PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>
 ): Effect.Effect<Option.Option<T>, DatabaseError> =>
-  pipe(
-    Effect.tryPromise({
+  Effect.gen(function* () {
+    const { data, error } = yield* Effect.tryPromise({
       try: () => query,
       catch: (e) => new DatabaseError({ message: String(e) }),
-    }),
-    Effect.flatMap(({ data, error }) =>
-      error
-        ? Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
-        : Effect.succeed(Option.fromNullable(data))
-    )
-  )
+    })
+
+    if (error) {
+      return yield* Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
+    }
+
+    return Option.fromNullable(data)
+  })
 
 export const runMutation = (
-  query: Promise<{ error: { message: string; code?: string } | null }>
+  query: PromiseLike<{ error: { message: string; code?: string } | null }>
 ): Effect.Effect<void, DatabaseError> =>
-  pipe(
-    Effect.tryPromise({
+  Effect.gen(function* () {
+    const { error } = yield* Effect.tryPromise({
       try: () => query,
       catch: (e) => new DatabaseError({ message: String(e) }),
-    }),
-    Effect.flatMap(({ error }) =>
-      error
-        ? Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
-        : Effect.void
-    )
-  )
+    })
+
+    if (error) {
+      return yield* Effect.fail(new DatabaseError({ message: error.message, code: error.code }))
+    }
+  })

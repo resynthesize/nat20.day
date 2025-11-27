@@ -132,12 +132,16 @@ export function useAvailability() {
         }
       })
 
-      const { error } = await supabase
+      console.log('Upserting availability:', { memberId, date, available })
+      const { data, error, status, statusText } = await supabase
         .from('availability')
         .upsert(
           { party_member_id: memberId, date, available },
           { onConflict: 'party_member_id,date' }
         )
+        .select()
+
+      console.log('Upsert result:', { data, error, status, statusText })
 
       if (error) {
         console.error('Error setting availability:', error)

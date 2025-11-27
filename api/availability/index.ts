@@ -1,13 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { Effect, pipe, Array as Arr } from 'effect'
+import { Effect, pipe, Array as Arr, Option } from 'effect'
 import { addWeeks, format, nextThursday, nextFriday, isThursday, isFriday } from 'date-fns'
 import {
   SupabaseService,
   SupabaseServiceLive,
   runQuery,
-  type AvailabilityWithProfile,
+  type Availability,
+  type Profile,
 } from '../lib/supabase'
 import { success, handleError } from '../lib/response'
+
+// Supabase returns joined relations as arrays
+interface AvailabilityRow extends Availability {
+  profiles: Pick<Profile, 'display_name' | 'avatar_url'>[]
+}
 
 const generateDates = (weeks: number): ReadonlyArray<string> => {
   const today = new Date()
@@ -16,11 +22,11 @@ const generateDates = (weeks: number): ReadonlyArray<string> => {
 
   return Arr.unfold(start, (current) =>
     current <= endDate
-      ? {
-          value: format(current, 'yyyy-MM-dd'),
-          next: isThursday(current) ? nextFriday(current) : nextThursday(current),
-        }
-      : undefined
+      ? Option.some([
+          format(current, 'yyyy-MM-dd'),
+          isThursday(current) ? nextFriday(current) : nextThursday(current),
+        ] as const)
+      : Option.none()
   )
 }
 
@@ -28,7 +34,7 @@ const fetchAvailability = (fromDate: string, toDate: string) =>
   pipe(
     SupabaseService,
     Effect.flatMap(({ client }) =>
-      runQuery<AvailabilityWithProfile[]>(
+      runQuery<AvailabilityRow[]>(
         client
           .from('availability')
           .select(
@@ -49,11 +55,10 @@ const fetchAvailability = (fromDate: string, toDate: string) =>
           .order('date', { ascending: true })
       )
     ),
-    // Supabase returns joined data as arrays
     Effect.map(
       Arr.map((item) => ({
         ...item,
-        profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+        profiles: item.profiles[0],
       }))
     )
   )
