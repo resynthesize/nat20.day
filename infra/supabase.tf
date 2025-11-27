@@ -10,6 +10,9 @@ resource "supabase_project" "main" {
   }
 }
 
+# Note: Avatars storage bucket is created via SQL migration (supabase_storage_bucket not supported by provider)
+# See: supabase/migrations/00003_avatars_storage.sql
+
 # Note: Google OAuth provider configuration may need to be done via Supabase dashboard
 # or CLI as the Terraform provider support varies. The settings below document the intent.
 #

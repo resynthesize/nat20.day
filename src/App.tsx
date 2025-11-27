@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Routes, Route, Link } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { LoginButton } from './components/auth/LoginButton'
 import { ScheduleGrid } from './components/schedule/ScheduleGrid'
+import { ProfilePage } from './components/profile/ProfilePage'
 import './App.css'
 
 const taglines = [
@@ -54,16 +56,20 @@ function App() {
           <h1 className="title">NAT 20</h1>
         </div>
         <div className="header-right">
-          <div className="user-info">
-            {profile?.avatar_url && (
+          <Link to="/profile" className="user-info">
+            {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
                 alt={profile.display_name}
                 className="user-avatar"
               />
+            ) : (
+              <div className="user-avatar-placeholder">
+                {(profile?.display_name || user?.email || '?').charAt(0).toUpperCase()}
+              </div>
             )}
             <span className="user-name">{profile?.display_name || user?.email}</span>
-          </div>
+          </Link>
           <button
             type="button"
             onClick={() => {
@@ -77,7 +83,10 @@ function App() {
       </header>
 
       <main className="main">
-        <ScheduleGrid />
+        <Routes>
+          <Route path="/" element={<ScheduleGrid />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Routes>
       </main>
 
       <footer className="footer">

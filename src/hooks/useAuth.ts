@@ -93,10 +93,19 @@ export function useAuth() {
     }
   }, [])
 
+  const refreshProfile = useCallback(async () => {
+    if (!state.user) return
+    const profile = await fetchProfile(state.user.id)
+    if (profile) {
+      setState((s) => ({ ...s, profile }))
+    }
+  }, [state.user, fetchProfile])
+
   return {
     ...state,
     signInWithGoogle,
     signOut,
+    refreshProfile,
     isAuthenticated: !!state.user,
   }
 }

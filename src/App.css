@@ -677,3 +677,220 @@ body {
     font-size: 0.65rem;
   }
 }
+
+/* Profile Page */
+.profile-page {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.profile-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.back-link {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--gold);
+  text-decoration: none;
+  margin-bottom: var(--spacing-md);
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.profile-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.profile-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl);
+}
+
+.profile-error {
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background: var(--unavailable-bg);
+  border: 1px solid var(--unavailable);
+  border-radius: var(--radius-sm);
+  color: var(--unavailable);
+  font-size: 0.875rem;
+}
+
+.profile-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.avatar-upload-button {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 3px solid var(--border-color);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+}
+
+.avatar-upload-button:hover {
+  border-color: var(--gold);
+}
+
+.avatar-upload-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.profile-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.avatar-upload-button:hover .avatar-overlay,
+.avatar-upload-button:disabled .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-hint {
+  margin-top: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.hidden-input {
+  display: none;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.profile-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.profile-label span:first-child {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.profile-input {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.profile-input:focus {
+  border-color: var(--gold);
+}
+
+.profile-input.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.save-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background: var(--accent-red);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  align-self: flex-start;
+}
+
+.save-button:hover:not(:disabled) {
+  background: var(--accent-red-hover);
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* User info link styling */
+.user-info {
+  text-decoration: none;
+  color: inherit;
+}
+
+.user-info:hover {
+  opacity: 0.9;
+}
+
+.user-avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
