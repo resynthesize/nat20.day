@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+/* eslint-disable react-refresh/only-export-components */
+import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { parseProfile, type Profile } from '../lib/schemas'
@@ -10,6 +11,15 @@ interface AuthState {
   loading: boolean
 }
 
+interface AuthContextValue extends AuthState {
+  signInWithGoogle: () => Promise<void>
+  signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
+  isAuthenticated: boolean
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
 function hasStoredSession(): boolean {
   try {
     const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
@@ -19,7 +29,7 @@ function hasStoredSession(): boolean {
   }
 }
 
-export function useAuth() {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
@@ -101,11 +111,21 @@ export function useAuth() {
     }
   }, [state.user, fetchProfile])
 
-  return {
+  const value: AuthContextValue = {
     ...state,
     signInWithGoogle,
     signOut,
     refreshProfile,
     isAuthenticated: !!state.user,
   }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }
