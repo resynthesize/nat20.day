@@ -110,10 +110,7 @@ BEGIN
   WHERE email = NEW.raw_user_meta_data->>'email'
     AND profile_id IS NULL;
 
-  -- Make Brandon admin
-  IF NEW.raw_user_meta_data->>'email' = 'admin@example.com' THEN
-    UPDATE public.profiles SET is_admin = true WHERE id = NEW.id;
-  END IF;
+  -- Admin assignment handled via seed.sql (not in version control)
 
   RETURN NEW;
 END;
@@ -125,13 +122,13 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Create profile
+  -- Create profile (admin assignment handled via seed.sql)
   INSERT INTO public.profiles (id, display_name, avatar_url, is_admin)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
     NEW.raw_user_meta_data->>'avatar_url',
-    NEW.raw_user_meta_data->>'email' = 'admin@example.com'
+    false
   );
 
   -- Link party member by email
