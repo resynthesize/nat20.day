@@ -22,8 +22,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 function hasStoredSession(): boolean {
   try {
-    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
-    return !!key && !!localStorage.getItem(key)
+    return !!localStorage.getItem('nat20-auth')
   } catch {
     return false
   }
