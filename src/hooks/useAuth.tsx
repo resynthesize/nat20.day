@@ -20,20 +20,76 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function hasStoredSession(): boolean {
+interface StoredSession {
+  access_token: string
+  refresh_token: string
+  expires_at: number
+  user: {
+    id: string
+    email?: string
+    app_metadata: Record<string, unknown>
+    user_metadata: Record<string, unknown>
+    aud: string
+    created_at: string
+  }
+}
+
+function getStoredSession(): { user: User; session: Session } | null {
   try {
-    return !!localStorage.getItem('nat20-auth')
+    const stored = localStorage.getItem('nat20-auth')
+    if (!stored) return null
+
+    const parsed = JSON.parse(stored) as StoredSession
+    if (!parsed.user || !parsed.access_token) return null
+
+    // Check if session is expired (with 60s buffer)
+    const now = Math.floor(Date.now() / 1000)
+    if (parsed.expires_at && parsed.expires_at < now + 60) {
+      return null // Session expired, don't use it
+    }
+
+    // Reconstruct user and session objects
+    const user: User = {
+      id: parsed.user.id,
+      email: parsed.user.email,
+      app_metadata: parsed.user.app_metadata,
+      user_metadata: parsed.user.user_metadata,
+      aud: parsed.user.aud,
+      created_at: parsed.user.created_at,
+    } as User
+
+    const session: Session = {
+      access_token: parsed.access_token,
+      refresh_token: parsed.refresh_token,
+      expires_at: parsed.expires_at,
+      expires_in: parsed.expires_at - now,
+      token_type: 'bearer',
+      user,
+    } as Session
+
+    return { user, session }
   } catch {
-    return false
+    return null
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    session: null,
-    loading: hasStoredSession(),
+  const [state, setState] = useState<AuthState>(() => {
+    const cached = getStoredSession()
+    if (cached) {
+      return {
+        user: cached.user,
+        profile: null, // Will be fetched in useEffect
+        session: cached.session,
+        loading: false, // No loading - we have a session
+      }
+    }
+    return {
+      user: null,
+      profile: null,
+      session: null,
+      loading: false, // No loading - show login immediately
+    }
   })
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
@@ -52,24 +108,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setState((s) => {
-        if (s.loading) return { ...s, loading: false }
-        return s
+    // If we have a cached user, fetch their profile immediately
+    const cached = getStoredSession()
+    if (cached) {
+      fetchProfile(cached.user.id).then((profile) => {
+        setState((s) => ({ ...s, profile }))
       })
-    }, 2000)
+    }
 
+    // Validate/refresh session in background
+    // This handles token refresh and ensures session is still valid
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timeout)
       const user = session?.user ?? null
       const profile = user ? await fetchProfile(user.id) : null
       setState({ user, profile, session, loading: false })
     }).catch((err) => {
-      clearTimeout(timeout)
       console.error('Error getting session:', err)
-      setState((s) => ({ ...s, loading: false }))
+      // On error, clear the invalid session
+      setState({ user: null, profile: null, session: null, loading: false })
     })
 
+    // Listen for auth state changes (login, logout, token refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
