@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { generateDates } from '../lib/dates'
+import { generateDates, formatDateDisplay, getDayOfWeek } from '../lib/dates'
 
 interface DemoMember {
   id: string
@@ -115,10 +115,10 @@ export function DemoPage() {
             {/* Header row with dates */}
             <div className="demo-grid-header">
               <div className="demo-grid-cell demo-grid-corner">Adventurer</div>
-              {dates.map(({ date, label, dayOfWeek }) => (
+              {dates.map((date) => (
                 <div key={date} className="demo-grid-cell demo-date-cell">
-                  <span className="demo-date-day">{dayOfWeek}</span>
-                  <span className="demo-date-label">{label}</span>
+                  <span className="demo-date-day">{getDayOfWeek(date)}</span>
+                  <span className="demo-date-label">{formatDateDisplay(date)}</span>
                 </div>
               ))}
             </div>
@@ -129,7 +129,7 @@ export function DemoPage() {
                 <div className="demo-grid-cell demo-member-cell">
                   <span className="demo-member-name">{member.name}</span>
                 </div>
-                {dates.map(({ date }) => {
+                {dates.map((date) => {
                   const key = `${member.id}-${date}`
                   const isAvailable = availabilityMap.get(key)
                   const status = isAvailable === true

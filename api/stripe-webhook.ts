@@ -23,7 +23,7 @@ function getStripe(): Stripe {
     throw new Error("STRIPE_SECRET_KEY not configured")
   }
   return new Stripe(secretKey, {
-    apiVersion: "2025-04-30.basil",
+    apiVersion: "2025-11-17.clover",
   })
 }
 
@@ -54,9 +54,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
   console.log(`Creating party "${partyName}" for user ${userId}`)
 
-  // Get subscription details from Stripe
+  // Get subscription details from Stripe (expand items to get current_period_start/end)
   const stripe = getStripe()
-  const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+  const subscription = await stripe.subscriptions.retrieve(session.subscription as string, {
+    expand: ['items.data'],
+  })
+
+  // Get current period from first subscription item (new API structure)
+  const firstItem = subscription.items.data[0]
+  const currentPeriodStart = firstItem?.current_period_start ?? subscription.created
+  const currentPeriodEnd = firstItem?.current_period_end ?? (subscription.created + 365 * 24 * 60 * 60)
 
   // 1. Create the party
   const { data: party, error: partyError } = await supabase
@@ -121,8 +128,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       stripe_subscription_id: subscription.id,
       stripe_customer_id: subscription.customer as string,
       status: subscription.status === "active" ? "active" : "past_due",
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date(currentPeriodStart * 1000).toISOString(),
+      current_period_end: new Date(currentPeriodEnd * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
     })
 
@@ -161,12 +168,17 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
       status = "expired"
   }
 
+  // Get current period from first subscription item (new API structure)
+  const firstItem = subscription.items?.data?.[0]
+  const currentPeriodStart = firstItem?.current_period_start ?? subscription.created
+  const currentPeriodEnd = firstItem?.current_period_end ?? (subscription.created + 365 * 24 * 60 * 60)
+
   const { error } = await supabase
     .from("subscriptions")
     .update({
       status,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date(currentPeriodStart * 1000).toISOString(),
+      current_period_end: new Date(currentPeriodEnd * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       updated_at: new Date().toISOString(),
     })
@@ -208,7 +220,12 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
  * Marks subscription as past_due
  */
 async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-  if (!invoice.subscription) {
+  // In Stripe API v20+, subscription is under parent.subscription_details
+  const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === 'string'
+    ? invoice.parent.subscription_details.subscription
+    : invoice.parent?.subscription_details?.subscription?.id
+
+  if (!subscriptionId) {
     console.log("Invoice payment failed but no subscription attached")
     return
   }
@@ -221,14 +238,14 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
       status: "past_due",
       updated_at: new Date().toISOString(),
     })
-    .eq("stripe_subscription_id", invoice.subscription as string)
+    .eq("stripe_subscription_id", subscriptionId)
 
   if (error) {
     console.error("Failed to mark subscription as past_due:", error)
     throw new Error(`Failed to update subscription: ${error.message}`)
   }
 
-  console.log(`Marked subscription ${invoice.subscription} as past_due due to payment failure`)
+  console.log(`Marked subscription ${subscriptionId} as past_due due to payment failure`)
 }
 
 /**

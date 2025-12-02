@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactElement } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 
 interface GuideSection {
@@ -353,7 +353,7 @@ export function GuidePage() {
 // Simple markdown-like renderer
 function GuideMarkdown({ content }: { content: string }) {
   const lines = content.trim().split('\n')
-  const elements: JSX.Element[] = []
+  const elements: ReactElement[] = []
   let inCodeBlock = false
   let codeBlockContent: string[] = []
   let inTable = false
@@ -527,7 +527,7 @@ function GuideMarkdown({ content }: { content: string }) {
 
 function InlineMarkdown({ text }: { text: string }) {
   // Process inline code, bold, links
-  const parts: (string | JSX.Element)[] = []
+  const parts: (string | ReactElement)[] = []
   let remaining = text
   let keyIndex = 0
 
