@@ -138,12 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Use onAuthStateChange as the PRIMARY way to get session
-    // This avoids the getSession() hanging issue
+    // IMPORTANT: Callback must NOT be async and must NOT call Supabase functions directly
+    // See: https://supabase.com/docs/reference/javascript/auth-onauthstatechange
     let initialEventReceived = false
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[Auth] onAuthStateChange:', event, { hasSession: !!session, userId: session?.user?.id })
 
       // Mark that we received the initial event
@@ -153,9 +154,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const user = session?.user ?? null
-      const profile = user ? await fetchProfile(user.id) : null
-      console.log('[Auth] onAuthStateChange: setting state', { hasUser: !!user, hasProfile: !!profile })
-      setState({ user, profile, session, loading: false })
+
+      // Set auth state immediately (without profile)
+      setState((s) => ({ ...s, user, session, loading: false }))
+
+      // Defer profile fetch to avoid deadlock (per Supabase docs)
+      if (user) {
+        setTimeout(() => {
+          console.log('[Auth] Deferred: fetching profile for user', user.id)
+          fetchProfile(user.id).then((profile) => {
+            console.log('[Auth] Deferred: profile fetched', { hasProfile: !!profile })
+            setState((s) => ({ ...s, profile }))
+          })
+        }, 0)
+      } else {
+        setState((s) => ({ ...s, profile: null }))
+      }
     })
 
     // Fallback: If no auth event received after 3 seconds, assume no session
