@@ -13,6 +13,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node"
+import { buffer } from "micro"
 import Stripe from "stripe"
 import { getServiceClient } from "./_lib/supabase.js"
 
@@ -275,17 +276,9 @@ export default async function handler(
   // Verify and construct the event
   let event: Stripe.Event
   try {
-    // For Vercel serverless functions, we need to read the raw body
-    // The body comes as a Buffer when bodyParser is disabled via vercel.json
-    let rawBody: string
-    if (Buffer.isBuffer(req.body)) {
-      rawBody = req.body.toString("utf8")
-    } else if (typeof req.body === "string") {
-      rawBody = req.body
-    } else {
-      // If body is already parsed, re-stringify it (less secure, but functional)
-      rawBody = JSON.stringify(req.body)
-    }
+    // Use micro's buffer() to read the raw body - this preserves exact formatting
+    // which is required for signature verification
+    const rawBody = await buffer(req)
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
   } catch (err) {
     console.error("Webhook signature verification failed:", err)
