@@ -67,12 +67,15 @@ export const AuthenticationLive = Layer.effect(
     Authentication.of({
       bearer: (redactedToken) =>
         Effect.gen(function* () {
+          console.log("[Auth] Middleware invoked!")
           // Unwrap the redacted token
           const token = Redacted.value(redactedToken)
+          console.log("[Auth] Token prefix:", token.substring(0, 10) + "...")
           const supabase = getServiceClient()
 
           // Check if it's a nat20_ API token
           if (token.startsWith("nat20_")) {
+            console.log("[Auth] Token is nat20_ API token")
             const tokenHash = hashToken(token)
 
             // Lookup token - map any DB error to Unauthorized (middleware can only fail with Unauthorized)
@@ -104,6 +107,7 @@ export const AuthenticationLive = Layer.effect(
               }).pipe(Effect.ignore)
             )
 
+            console.log("[Auth] API token validated, profile_id:", data.profile_id)
             return { profileId: data.profile_id }
           }
 
