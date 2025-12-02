@@ -1,19 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { generateToken } from '../lib/crypto'
+import { generateToken } from './lib/crypto'
 
 /**
  * Token Management API
  *
- * POST /api/tokens - Create a new token (returns raw token once)
- * GET /api/tokens - List user's tokens (prefix only)
- * DELETE /api/tokens/:id - Revoke a token
- *
- * All routes require Supabase session authentication (via cookie/header)
+ * POST /api/tokens        - Create a new token
+ * GET  /api/tokens        - List user's tokens
+ * DELETE /api/tokens?id=x - Revoke a token
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '*')
+  res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
@@ -50,13 +48,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ success: false, error: 'Invalid session' })
   }
 
-  // Parse the action from the URL path
-  const action = req.query.action as string[] | undefined
-  const path = action?.join('/') || ''
-
   try {
     // POST /api/tokens - Create new token
-    if (req.method === 'POST' && path === '') {
+    if (req.method === 'POST') {
       const { name } = req.body as { name?: string }
 
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -67,10 +61,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ success: false, error: 'Token name too long (max 100 chars)' })
       }
 
-      // Generate token
       const { raw, hash, prefix } = generateToken()
 
-      // Store in database (only hash, never raw)
       const { error: insertError } = await supabase.from('api_tokens').insert({
         profile_id: user.id,
         name: name.trim(),
@@ -83,7 +75,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ success: false, error: 'Failed to create token' })
       }
 
-      // Return raw token (shown only once!)
       return res.status(201).json({
         success: true,
         data: {
@@ -96,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // GET /api/tokens - List tokens
-    if (req.method === 'GET' && path === '') {
+    if (req.method === 'GET') {
       const { data: tokens, error: listError } = await supabase
         .from('api_tokens')
         .select('id, name, token_prefix, created_at, last_used_at')
@@ -111,15 +102,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, data: tokens })
     }
 
-    // DELETE /api/tokens/:id - Delete token
-    if (req.method === 'DELETE' && path) {
-      const tokenId = path
+    // DELETE /api/tokens?id=xxx - Delete token
+    if (req.method === 'DELETE') {
+      const tokenId = req.query.id as string
+
+      if (!tokenId) {
+        return res.status(400).json({ success: false, error: 'Token ID required' })
+      }
 
       const { error: deleteError } = await supabase
         .from('api_tokens')
         .delete()
         .eq('id', tokenId)
-        .eq('profile_id', user.id) // Ensure user owns the token
+        .eq('profile_id', user.id)
 
       if (deleteError) {
         console.error('Error deleting token:', deleteError)
@@ -129,8 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, data: { deleted: true } })
     }
 
-    // Unknown route
-    return res.status(404).json({ success: false, error: 'Not found' })
+    return res.status(405).json({ success: false, error: 'Method not allowed' })
   } catch (err) {
     console.error('Token API error:', err)
     return res.status(500).json({ success: false, error: 'Internal server error' })

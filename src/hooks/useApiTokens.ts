@@ -117,7 +117,7 @@ export function useApiTokens({ userId }: UseApiTokensOptions) {
           throw new Error('Not authenticated')
         }
 
-        const response = await fetch(`/api/tokens/${tokenId}`, {
+        const response = await fetch(`/api/tokens?id=${tokenId}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${session.access_token}`,
