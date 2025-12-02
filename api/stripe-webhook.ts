@@ -14,7 +14,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node"
 import Stripe from "stripe"
-import { getServiceClient } from "./lib/supabase.js"
+import { getServiceClient } from "./_lib/supabase.js"
 
 // Initialize Stripe client
 function getStripe(): Stripe {

@@ -10,7 +10,7 @@
 import { OpenApi } from "@effect/platform"
 import * as fs from "fs"
 import * as path from "path"
-import { Nat20Api } from "../api/lib/api.js"
+import { Nat20Api } from "../api/_lib/api.js"
 
 // Generate OpenAPI spec from Effect API definition
 const spec = OpenApi.fromApi(Nat20Api)
