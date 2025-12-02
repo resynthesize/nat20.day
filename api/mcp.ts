@@ -24,7 +24,7 @@ const supabase = createClient(
 // ============================================================================
 
 const PartyIdSchema = z.object({
-  party_id: z.string().uuid().describe('Party UUID'),
+  party_id: z.string().regex(/^party_[A-Za-z0-9]{8}$/).describe('Party ID'),
 })
 
 const DateRangeSchema = PartyIdSchema.extend({
