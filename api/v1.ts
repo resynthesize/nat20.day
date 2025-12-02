@@ -65,7 +65,7 @@ function matchRoute(
 const handleGetMe: RouteHandler = async (_req, res, ctx) => {
   const { data, error } = await ctx.supabase
     .from('profiles')
-    .select('id, display_name, avatar_url, created_at')
+    .select('slug, display_name, avatar_url, created_at')
     .eq('id', ctx.profileId)
     .single()
 
@@ -73,7 +73,13 @@ const handleGetMe: RouteHandler = async (_req, res, ctx) => {
     return res.status(404).json(errorResponse('NOT_FOUND', 'Profile not found', 404))
   }
 
-  res.json(successResponse(data))
+  // Return slug as "id" for consistent API
+  res.json(successResponse({
+    id: data.slug,
+    display_name: data.display_name,
+    avatar_url: data.avatar_url,
+    created_at: data.created_at,
+  }))
 }
 
 const handleGetParties: RouteHandler = async (_req, res, ctx) => {
@@ -125,10 +131,10 @@ const handleGetPartyAvailability: RouteHandler = async (req, res, ctx, params) =
   const fromDate = (req.query.from as string) || new Date().toISOString().split('T')[0]
   const toDate = req.query.to as string
 
-  // Get all party members
+  // Get all party members with profile info
   const { data: members, error: membersError } = await ctx.supabase
     .from('party_members')
-    .select('id, name, profile_id, profiles(display_name, avatar_url)')
+    .select('id, name, profiles(slug, display_name, avatar_url)')
     .eq('party_id', partyId)
     .order('name')
 
@@ -154,14 +160,18 @@ const handleGetPartyAvailability: RouteHandler = async (req, res, ctx, params) =
     return res.status(500).json(errorResponse('DB_ERROR', 'Failed to fetch availability', 500))
   }
 
+  // Format response with short IDs
+  const profile = (m: typeof members[0]) => m.profiles as { slug?: string; display_name?: string; avatar_url?: string } | null
+
   res.json(
     successResponse({
       party_id: partyId,
       members: members.map((m) => ({
         id: m.id,
         name: m.name,
-        profile_id: m.profile_id,
-        display_name: (m.profiles as { display_name?: string })?.display_name || m.name,
+        user_id: profile(m)?.slug || null,  // Short user ID or null if not linked
+        display_name: profile(m)?.display_name || m.name,
+        avatar_url: profile(m)?.avatar_url || null,
       })),
       availability,
     })
