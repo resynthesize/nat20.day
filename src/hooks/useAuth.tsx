@@ -127,6 +127,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nat20Auth = localStorage.getItem('nat20-auth')
     console.log('[Auth] useEffect: nat20-auth exists?', !!nat20Auth, nat20Auth ? 'length=' + nat20Auth.length : '')
 
+    // Check for OAuth tokens in URL hash (fallback for detectSessionInUrl)
+    const hash = window.location.hash
+    console.log('[Auth] useEffect: URL hash present?', !!hash, hash ? `(${hash.length} chars)` : '')
+
+    if (hash && hash.includes('access_token=')) {
+      console.log('[Auth] useEffect: Found OAuth tokens in URL, manually exchanging...')
+
+      // Parse tokens from hash
+      const params = new URLSearchParams(hash.substring(1))
+      const access_token = params.get('access_token')
+      const refresh_token = params.get('refresh_token')
+
+      if (access_token && refresh_token) {
+        console.log('[Auth] useEffect: Calling setSession with tokens')
+        supabase.auth.setSession({ access_token, refresh_token }).then(({ data, error }) => {
+          if (error) {
+            console.error('[Auth] useEffect: setSession ERROR', error)
+          } else {
+            console.log('[Auth] useEffect: setSession SUCCESS', { userId: data.user?.id })
+            // Clear the hash from URL (security - don't leave tokens in address bar)
+            window.history.replaceState(null, '', window.location.pathname)
+          }
+        })
+      }
+    }
+
     // If we have a cached user, fetch their profile immediately
     const cached = getStoredSession()
     if (cached) {
