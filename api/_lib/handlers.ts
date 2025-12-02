@@ -5,8 +5,8 @@
  * Authentication is handled via middleware that validates nat20_ tokens.
  */
 
-import { HttpApiBuilder, HttpApiMiddleware, HttpApiSecurity } from "@effect/platform"
-import { Context, Effect, Layer, Redacted } from "effect"
+import { HttpApiBuilder } from "@effect/platform"
+import { Effect, Layer, Redacted } from "effect"
 import {
   Nat20Api,
   Profile,
@@ -20,19 +20,14 @@ import {
   Forbidden,
   NotFound,
   InternalError,
+  CurrentUser,
+  Authentication,
 } from "./api.js"
 import { getServiceClient } from "./supabase.js"
 import { hashToken } from "./crypto.js"
 
-// ============================================================================
-// Authentication Context
-// ============================================================================
-
-/** Current authenticated user context */
-export class CurrentUser extends Context.Tag("CurrentUser")<
-  CurrentUser,
-  { profileId: string }
->() {}
+// Re-export for use by other modules
+export { CurrentUser, Authentication }
 
 /**
  * Stub layer for CurrentUser - satisfies type checker at composition time.
@@ -41,24 +36,8 @@ export class CurrentUser extends Context.Tag("CurrentUser")<
 export const CurrentUserStub = Layer.succeed(CurrentUser, { profileId: "" })
 
 // ============================================================================
-// Authentication Middleware
+// Authentication Middleware Implementation
 // ============================================================================
-
-/** Bearer token security scheme for nat20_ tokens */
-const bearerSecurity = HttpApiSecurity.bearer
-
-/**
- * Authentication middleware that validates nat20_ tokens
- * and provides CurrentUser context to handlers
- */
-export class Authentication extends HttpApiMiddleware.Tag<Authentication>()(
-  "Authentication",
-  {
-    failure: Unauthorized,
-    provides: CurrentUser,
-    security: { bearer: bearerSecurity },
-  }
-) {}
 
 /** Authentication implementation layer */
 export const AuthenticationLive = Layer.effect(

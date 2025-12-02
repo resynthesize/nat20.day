@@ -8,8 +8,8 @@
  * - OpenAPI documentation generation
  */
 
-import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
-import { Schema } from "effect"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSecurity, OpenApi } from "@effect/platform"
+import { Context, Schema } from "effect"
 
 // ============================================================================
 // Response Schemas
@@ -195,6 +195,29 @@ export class ConfigError extends Schema.TaggedError<ConfigError>()("ConfigError"
 }
 
 // ============================================================================
+// Authentication Middleware
+// ============================================================================
+
+/** Current authenticated user context */
+export class CurrentUser extends Context.Tag("CurrentUser")<
+  CurrentUser,
+  { profileId: string }
+>() {}
+
+/** Bearer token security scheme */
+const bearerSecurity = HttpApiSecurity.bearer
+
+/** Authentication middleware that validates tokens and provides CurrentUser */
+export class Authentication extends HttpApiMiddleware.Tag<Authentication>()(
+  "Authentication",
+  {
+    failure: Unauthorized,
+    provides: CurrentUser,
+    security: { bearer: bearerSecurity },
+  }
+) {}
+
+// ============================================================================
 // Endpoint Definitions
 // ============================================================================
 
@@ -288,18 +311,21 @@ const getSubscription = HttpApiEndpoint.get("getSubscription", "/billing/subscri
 const userGroup = HttpApiGroup.make("user")
   .add(getMe)
   .add(getParties)
+  .middleware(Authentication)
   .annotate(OpenApi.Title, "User")
 
 const availabilityGroup = HttpApiGroup.make("availability")
   .add(getPartyAvailability)
   .add(setAvailability)
   .add(deleteAvailability)
+  .middleware(Authentication)
   .annotate(OpenApi.Title, "Availability")
 
 const billingGroup = HttpApiGroup.make("billing")
   .add(createCheckout)
   .add(createPortal)
   .add(getSubscription)
+  .middleware(Authentication)
   .annotate(OpenApi.Title, "Billing")
 
 // ============================================================================
