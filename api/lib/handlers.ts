@@ -5,7 +5,7 @@
  * Authentication is handled via middleware that validates nat20_ tokens.
  */
 
-import { HttpApiBuilder, HttpApiMiddleware, HttpApiSecurity, HttpServerRequest } from "@effect/platform"
+import { HttpApiBuilder, HttpApiMiddleware, HttpApiSecurity } from "@effect/platform"
 import { Context, Effect, Layer } from "effect"
 import {
   Nat20Api,
@@ -19,7 +19,6 @@ import {
   Unauthorized,
   Forbidden,
   NotFound,
-  InvalidInput,
   InternalError,
 } from "./api.js"
 import { getServiceClient } from "./supabase.js"
@@ -58,8 +57,8 @@ export class Authentication extends HttpApiMiddleware.Tag<Authentication>()(
 /** Authentication implementation layer */
 const AuthenticationLive = Layer.effect(
   Authentication,
-  Effect.gen(function* () {
-    return Authentication.of({
+  Effect.succeed(
+    Authentication.of({
       bearer: (token) =>
         Effect.gen(function* () {
           // Validate nat20_ prefix
@@ -103,7 +102,7 @@ const AuthenticationLive = Layer.effect(
           return { profileId: data.profile_id }
         }),
     })
-  })
+  )
 )
 
 // ============================================================================
