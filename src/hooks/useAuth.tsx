@@ -137,42 +137,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
     }
 
-    // Validate/refresh session in background
-    // This handles token refresh and ensures session is still valid
-    console.log('[Auth] useEffect: calling supabase.auth.getSession()')
+    // Use onAuthStateChange as the PRIMARY way to get session
+    // This avoids the getSession() hanging issue
+    let initialEventReceived = false
 
-    // Add timeout to detect hanging getSession
-    const timeoutId = setTimeout(() => {
-      console.error('[Auth] useEffect: getSession TIMEOUT after 10s - checking localStorage directly')
-      const stored = localStorage.getItem('nat20-auth')
-      console.log('[Auth] localStorage nat20-auth:', stored ? JSON.parse(stored) : 'null')
-    }, 10000)
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timeoutId)
-      console.log('[Auth] useEffect: getSession returned', { hasSession: !!session, userId: session?.user?.id })
-      const user = session?.user ?? null
-      const profile = user ? await fetchProfile(user.id) : null
-      console.log('[Auth] useEffect: setting final auth state', { hasUser: !!user, hasProfile: !!profile })
-      setState({ user, profile, session, loading: false })
-    }).catch((err) => {
-      clearTimeout(timeoutId)
-      console.error('[Auth] useEffect: getSession ERROR', err)
-      // On error, clear the invalid session
-      setState({ user: null, profile: null, session: null, loading: false })
-    })
-
-    // Listen for auth state changes (login, logout, token refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[Auth] onAuthStateChange:', event, { hasSession: !!session, userId: session?.user?.id })
+
+      // Mark that we received the initial event
+      if (!initialEventReceived) {
+        initialEventReceived = true
+        console.log('[Auth] onAuthStateChange: received initial auth event')
+      }
+
       const user = session?.user ?? null
       const profile = user ? await fetchProfile(user.id) : null
+      console.log('[Auth] onAuthStateChange: setting state', { hasUser: !!user, hasProfile: !!profile })
       setState({ user, profile, session, loading: false })
     })
 
-    return () => subscription.unsubscribe()
+    // Fallback: If no auth event received after 3 seconds, assume no session
+    const fallbackTimeout = setTimeout(() => {
+      if (!initialEventReceived) {
+        console.log('[Auth] Fallback: No auth event after 3s, assuming no session')
+        setState({ user: null, profile: null, session: null, loading: false })
+      }
+    }, 3000)
+
+    return () => {
+      clearTimeout(fallbackTimeout)
+      subscription.unsubscribe()
+    }
   }, [fetchProfile])
 
   const signInWithGoogle = useCallback(async () => {
