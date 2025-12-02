@@ -71,35 +71,70 @@ async function getMembership(userId: string, partyId: string) {
 }
 
 // ============================================================================
+// Tool Annotations (hints for AI models)
+// ============================================================================
+
+const ReadOnlyAnnotations = {
+  readOnlyHint: true,
+  openWorldHint: true,
+}
+
+const WriteAnnotations = {
+  readOnlyHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+}
+
+const DeleteAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: true,
+}
+
+// ============================================================================
 // MCP Handler
 // ============================================================================
 
 const handler = createMcpHandler(
   (server) => {
     // Tool: Get user profile
-    server.tool('get_profile', 'Get your nat20.day profile', {}, async (_, extra) => {
-      const userId = extra.authInfo?.clientId
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
-      if (error) throw new Error(error.message)
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] }
-    })
+    server.tool(
+      'get_profile',
+      'Get your nat20.day profile including display name and avatar',
+      {},
+      { title: 'Get Profile', ...ReadOnlyAnnotations },
+      async (_, extra) => {
+        const userId = extra.authInfo?.clientId
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
+        if (error) throw new Error(error.message)
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] }
+      }
+    )
 
     // Tool: List parties
-    server.tool('get_parties', 'List all D&D parties you belong to', {}, async (_, extra) => {
-      const userId = extra.authInfo?.clientId
-      const { data, error } = await supabase
-        .from('party_members')
-        .select('party_id, parties(id, name, created_at)')
-        .eq('profile_id', userId)
-      if (error) throw new Error(error.message)
-      return { content: [{ type: 'text', text: JSON.stringify(data?.map(m => m.parties) || [], null, 2) }] }
-    })
+    server.tool(
+      'get_parties',
+      'List all D&D parties you belong to. Returns party IDs needed for other tools.',
+      {},
+      { title: 'List Parties', ...ReadOnlyAnnotations },
+      async (_, extra) => {
+        const userId = extra.authInfo?.clientId
+        const { data, error } = await supabase
+          .from('party_members')
+          .select('party_id, parties(id, name, created_at)')
+          .eq('profile_id', userId)
+        if (error) throw new Error(error.message)
+        return { content: [{ type: 'text', text: JSON.stringify(data?.map(m => m.parties) || [], null, 2) }] }
+      }
+    )
 
     // Tool: Get party availability
     server.tool(
       'get_party_availability',
-      'Get availability grid for a party',
+      'Get availability grid showing when each party member is available. Use date filters to narrow results.',
       DateRangeSchema.shape,
+      { title: 'Get Party Availability', ...ReadOnlyAnnotations },
       async ({ party_id, from, to }, extra) => {
         const userId = extra.authInfo?.clientId!
         await getMembership(userId, party_id)
@@ -120,8 +155,9 @@ const handler = createMcpHandler(
     // Tool: Set availability
     server.tool(
       'set_availability',
-      'Set your availability for a specific date',
+      'Set your availability for a specific date. Use available=true to mark available, false for unavailable.',
       SetAvailabilitySchema.shape,
+      { title: 'Set Availability', ...WriteAnnotations },
       async ({ party_id, date, available }, extra) => {
         const userId = extra.authInfo?.clientId!
         const member = await getMembership(userId, party_id)
@@ -137,8 +173,9 @@ const handler = createMcpHandler(
     // Tool: Clear availability
     server.tool(
       'clear_availability',
-      'Clear your availability for a specific date',
+      'Remove your availability entry for a specific date, returning it to "no response" state.',
       ClearAvailabilitySchema.shape,
+      { title: 'Clear Availability', ...DeleteAnnotations },
       async ({ party_id, date }, extra) => {
         const userId = extra.authInfo?.clientId!
         const member = await getMembership(userId, party_id)
