@@ -1,5 +1,5 @@
-import { getServiceClient } from './supabase'
-import { hashToken } from './crypto'
+import { getServiceClient } from './supabase.js'
+import { hashToken } from './crypto.js'
 
 export interface TokenValidationResult {
   valid: boolean

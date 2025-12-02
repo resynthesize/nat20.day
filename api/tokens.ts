@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { generateToken } from './lib/crypto'
+import { generateToken } from './lib/crypto.js'
 
 /**
  * Token Management API
