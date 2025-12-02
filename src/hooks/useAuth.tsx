@@ -121,6 +121,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('[Auth] useEffect: starting auth initialization')
 
+    // Debug: Check what's in localStorage right now
+    const allKeys = Object.keys(localStorage)
+    console.log('[Auth] useEffect: localStorage keys:', allKeys)
+    const nat20Auth = localStorage.getItem('nat20-auth')
+    console.log('[Auth] useEffect: nat20-auth exists?', !!nat20Auth, nat20Auth ? 'length=' + nat20Auth.length : '')
+
     // If we have a cached user, fetch their profile immediately
     const cached = getStoredSession()
     if (cached) {
@@ -134,13 +140,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Validate/refresh session in background
     // This handles token refresh and ensures session is still valid
     console.log('[Auth] useEffect: calling supabase.auth.getSession()')
+
+    // Add timeout to detect hanging getSession
+    const timeoutId = setTimeout(() => {
+      console.error('[Auth] useEffect: getSession TIMEOUT after 10s - checking localStorage directly')
+      const stored = localStorage.getItem('nat20-auth')
+      console.log('[Auth] localStorage nat20-auth:', stored ? JSON.parse(stored) : 'null')
+    }, 10000)
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeoutId)
       console.log('[Auth] useEffect: getSession returned', { hasSession: !!session, userId: session?.user?.id })
       const user = session?.user ?? null
       const profile = user ? await fetchProfile(user.id) : null
       console.log('[Auth] useEffect: setting final auth state', { hasUser: !!user, hasProfile: !!profile })
       setState({ user, profile, session, loading: false })
     }).catch((err) => {
+      clearTimeout(timeoutId)
       console.error('[Auth] useEffect: getSession ERROR', err)
       // On error, clear the invalid session
       setState({ user: null, profile: null, session: null, loading: false })
