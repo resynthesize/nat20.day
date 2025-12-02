@@ -85,9 +85,9 @@ const WriteAnnotations = {
   openWorldHint: true,
 }
 
-const DeleteAnnotations = {
+// Clear is reversible (just call set_availability), so not truly destructive
+const ClearAnnotations = {
   readOnlyHint: false,
-  destructiveHint: true,
   idempotentHint: true,
   openWorldHint: true,
 }
@@ -175,7 +175,7 @@ const handler = createMcpHandler(
       'clear_availability',
       'Remove your availability entry for a specific date, returning it to "no response" state.',
       ClearAvailabilitySchema.shape,
-      { title: 'Clear Availability', ...DeleteAnnotations },
+      { title: 'Clear Availability', ...ClearAnnotations },
       async ({ party_id, date }, extra) => {
         const userId = extra.authInfo?.clientId!
         const member = await getMembership(userId, party_id)
