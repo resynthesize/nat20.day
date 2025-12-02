@@ -1,24 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { generateDates, formatDateDisplay, getDayOfWeek } from '../lib/dates'
-
-interface DemoMember {
-  id: string
-  name: string
-}
-
-interface DemoAvailability {
-  party_member_id: string
-  date: string
-  available: boolean
-}
+import { generateDates } from '../lib/dates'
+import { AvailabilityGrid, type GridMember, type GridAvailability } from '../components/schedule/AvailabilityGrid'
 
 const DEMO_PARTY_ID = 'party_DEMO0000'
 
 export function DemoPage() {
-  const [members, setMembers] = useState<DemoMember[]>([])
-  const [availability, setAvailability] = useState<DemoAvailability[]>([])
+  const [members, setMembers] = useState<GridMember[]>([])
+  const [availability, setAvailability] = useState<GridAvailability[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,10 +35,25 @@ export function DemoPage() {
             .in('party_member_id', memberIds)
 
           if (availError) throw availError
-          setAvailability(availData || [])
+
+          // Transform to GridAvailability format
+          setAvailability(
+            (availData || []).map(a => ({
+              memberId: a.party_member_id,
+              date: a.date,
+              available: a.available,
+            }))
+          )
         }
 
-        setMembers(membersData || [])
+        // Transform to GridMember format
+        setMembers(
+          (membersData || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            isLinked: true, // Demo members are all "linked"
+          }))
+        )
       } catch (err) {
         console.error('Error loading demo data:', err)
         setError('Failed to load demo data')
@@ -60,11 +65,27 @@ export function DemoPage() {
     loadDemoData()
   }, [])
 
-  // Create availability lookup
-  const availabilityMap = new Map<string, boolean>()
-  for (const a of availability) {
-    availabilityMap.set(`${a.party_member_id}-${a.date}`, a.available)
-  }
+  // Toggle availability locally (not persisted)
+  const handleToggle = useCallback((memberId: string, date: string) => {
+    setAvailability(prev => {
+      const existing = prev.find(a => a.memberId === memberId && a.date === date)
+
+      if (!existing) {
+        // unset → available
+        return [...prev, { memberId, date, available: true }]
+      } else if (existing.available) {
+        // available → unavailable
+        return prev.map(a =>
+          a.memberId === memberId && a.date === date
+            ? { ...a, available: false }
+            : a
+        )
+      } else {
+        // unavailable → unset
+        return prev.filter(a => !(a.memberId === memberId && a.date === date))
+      }
+    })
+  }, [])
 
   if (loading) {
     return (
@@ -107,53 +128,15 @@ export function DemoPage() {
         </div>
         <p className="demo-subtitle">
           This is a demo party showing how nat20.day helps coordinate schedules.
-          Toggle cells to see how availability tracking works!
+          Try clicking on cells to toggle availability!
         </p>
 
-        <div className="demo-grid-container">
-          <div className="demo-schedule-grid">
-            {/* Header row with dates */}
-            <div className="demo-grid-header">
-              <div className="demo-grid-cell demo-grid-corner">Adventurer</div>
-              {dates.map((date) => (
-                <div key={date} className="demo-grid-cell demo-date-cell">
-                  <span className="demo-date-day">{getDayOfWeek(date)}</span>
-                  <span className="demo-date-label">{formatDateDisplay(date)}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Member rows */}
-            {members.map(member => (
-              <div key={member.id} className="demo-grid-row">
-                <div className="demo-grid-cell demo-member-cell">
-                  <span className="demo-member-name">{member.name}</span>
-                </div>
-                {dates.map((date) => {
-                  const key = `${member.id}-${date}`
-                  const isAvailable = availabilityMap.get(key)
-                  const status = isAvailable === true
-                    ? 'available'
-                    : isAvailable === false
-                      ? 'unavailable'
-                      : 'unset'
-
-                  return (
-                    <div
-                      key={key}
-                      className={`demo-grid-cell demo-availability-cell demo-${status}`}
-                      title={`${member.name} - ${date}: ${status}`}
-                    >
-                      {status === 'available' && '✓'}
-                      {status === 'unavailable' && '✗'}
-                      {status === 'unset' && '?'}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
+        <AvailabilityGrid
+          members={members}
+          dates={dates}
+          availability={availability}
+          onToggle={handleToggle}
+        />
 
         <div className="demo-cta-section">
           <h2>Ready to coordinate your own party?</h2>

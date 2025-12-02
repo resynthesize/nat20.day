@@ -1,8 +1,7 @@
 import { useAuth } from '../../hooks/useAuth'
 import { useAvailability } from '../../hooks/useAvailability'
 import { useParty } from '../../hooks/useParty'
-import { formatDateDisplay, getDayOfWeek } from '../../lib/dates'
-import type { PartyMember } from '../../lib/schemas'
+import { AvailabilityGrid, type GridMember, type GridAvailability } from './AvailabilityGrid'
 
 export function ScheduleGrid() {
   const { user } = useAuth()
@@ -15,7 +14,6 @@ export function ScheduleGrid() {
     getAvailability,
     setAvailability,
     clearAvailability,
-    countAvailable,
   } = useAvailability({ partyId: currentParty?.id ?? null })
 
   console.log('[ScheduleGrid] render:', {
@@ -50,6 +48,30 @@ export function ScheduleGrid() {
 
   console.log('[ScheduleGrid] rendering full grid')
 
+  // Transform partyMembers to GridMember format
+  const members: GridMember[] = partyMembers.map(member => ({
+    id: member.id,
+    name: member.profiles?.display_name || member.name,
+    avatarUrl: member.profiles?.avatar_url,
+    isCurrentUser: member.profile_id === user?.id,
+    isLinked: member.profile_id !== null,
+  }))
+
+  // Build availability array from the hook's data
+  const availability: GridAvailability[] = []
+  for (const member of partyMembers) {
+    for (const date of dates) {
+      const avail = getAvailability(member.id, date)
+      if (avail) {
+        availability.push({
+          memberId: member.id,
+          date,
+          available: avail.available,
+        })
+      }
+    }
+  }
+
   const handleToggle = (memberId: string, date: string) => {
     const member = partyMembers.find((m) => m.id === memberId)
     const isOwnRow = member?.profile_id === user?.id
@@ -66,143 +88,19 @@ export function ScheduleGrid() {
     }
   }
 
-  const isAllAvailable = (date: string) => {
-    return countAvailable(date) === partyMembers.length && partyMembers.length > 0
+  const canEdit = (memberId: string) => {
+    const member = partyMembers.find((m) => m.id === memberId)
+    return isAdmin || member?.profile_id === user?.id
   }
 
   return (
-    <div className="schedule-container">
-      {isAdmin && (
-        <div className="admin-badge">Admin Mode - You can edit all schedules</div>
-      )}
-      <div
-        className="schedule-grid"
-        style={{ '--date-columns': dates.length } as React.CSSProperties}
-      >
-        <div className="grid-header">
-          <div className="player-label">Adventurer</div>
-          {dates.map((date) => {
-            const allAvailable = isAllAvailable(date)
-            return (
-              <div key={date} className={`date-header ${allAvailable ? 'all-available' : ''}`}>
-                <span className="day-of-week">{getDayOfWeek(date)}</span>
-                <span className="date-display">{formatDateDisplay(date)}</span>
-                <span className="available-count">
-                  {countAvailable(date)}/{partyMembers.length}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-
-        {partyMembers.map((member) => {
-          const isCurrentUser = member.profile_id === user?.id
-          const canEdit = isAdmin || isCurrentUser
-
-          return (
-            <MemberRow
-              key={member.id}
-              member={member}
-              dates={dates}
-              isCurrentUser={isCurrentUser}
-              canEdit={canEdit}
-              getAvailability={getAvailability}
-              onToggle={handleToggle}
-              isAllAvailable={isAllAvailable}
-            />
-          )
-        })}
-      </div>
-
-      <div className="legend">
-        <span className="legend-item">
-          <span className="legend-dot available" />
-          Available
-        </span>
-        <span className="legend-item">
-          <span className="legend-dot unavailable" />
-          Unavailable
-        </span>
-        <span className="legend-item">
-          <span className="legend-dot unset" />
-          Not set
-        </span>
-      </div>
-    </div>
-  )
-}
-
-interface MemberRowProps {
-  member: PartyMember
-  dates: string[]
-  isCurrentUser: boolean
-  canEdit: boolean
-  getAvailability: (memberId: string, date: string) => { available: boolean } | undefined
-  onToggle: (memberId: string, date: string) => void
-  isAllAvailable: (date: string) => boolean
-}
-
-function MemberRow({
-  member,
-  dates,
-  isCurrentUser,
-  canEdit,
-  getAvailability,
-  onToggle,
-  isAllAvailable,
-}: MemberRowProps) {
-  const displayName = member.profiles?.display_name || member.name
-  const avatarUrl = member.profiles?.avatar_url
-  const isLinked = member.profile_id !== null
-
-  return (
-    <div className={`player-row ${isCurrentUser ? 'current-user' : ''} ${!isLinked ? 'unlinked' : ''}`}>
-      <div className="player-info">
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={displayName}
-            className="avatar"
-          />
-        ) : (
-          <div className="avatar-placeholder">
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <span className="player-name">
-          {displayName}
-          {isCurrentUser && <span className="you-badge">(you)</span>}
-          {!isLinked && <span className="pending-badge">pending</span>}
-        </span>
-      </div>
-      {dates.map((date) => {
-        const availability = getAvailability(member.id, date)
-        const status = availability
-          ? availability.available
-            ? 'available'
-            : 'unavailable'
-          : 'unset'
-        const allAvailable = isAllAvailable(date)
-
-        return (
-          <button
-            key={date}
-            type="button"
-            className={`availability-cell ${status} ${canEdit ? 'clickable' : ''} ${allAvailable ? 'all-available-column' : ''}`}
-            onClick={() => canEdit && onToggle(member.id, date)}
-            disabled={!canEdit}
-            title={
-              canEdit
-                ? `Click to toggle availability for ${formatDateDisplay(date)}`
-                : `${displayName}: ${status}`
-            }
-          >
-            {status === 'available' && '✓'}
-            {status === 'unavailable' && '✗'}
-            {status === 'unset' && '?'}
-          </button>
-        )
-      })}
-    </div>
+    <AvailabilityGrid
+      members={members}
+      dates={dates}
+      availability={availability}
+      onToggle={handleToggle}
+      canEdit={canEdit}
+      showAdminBadge={isAdmin}
+    />
   )
 }
