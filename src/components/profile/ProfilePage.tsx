@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
+import { ApiTokens } from './ApiTokens'
 
 export function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth()
@@ -121,6 +122,8 @@ export function ProfilePage() {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
+
+        <ApiTokens userId={user?.id ?? null} />
       </div>
     </div>
   )

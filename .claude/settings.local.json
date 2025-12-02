@@ -5,7 +5,9 @@
       "WebFetch(domain:tld-list.com)",
       "WebFetch(domain:cfdomainpricing.com)",
       "Bash(tree:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(git -C /Users/brandon/src/nat20.day status --short)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

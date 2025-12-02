@@ -880,6 +880,231 @@ body {
   cursor: not-allowed;
 }
 
+/* ============================================= */
+/* API Tokens Styles */
+/* ============================================= */
+
+.api-tokens-section {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--border-color);
+}
+
+.tokens-header h3 {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.tokens-description {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.tokens-loading,
+.no-tokens {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* New token display (shown once after creation) */
+.new-token-display {
+  background: var(--bg-tertiary);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.new-token-warning {
+  font-size: 0.875rem;
+  color: var(--gold);
+  margin-bottom: var(--spacing-sm);
+}
+
+.new-token-value {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.new-token-value code {
+  flex: 1;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.8rem;
+  padding: var(--spacing-sm);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+  color: var(--text-primary);
+}
+
+.copy-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  background: var(--accent-red);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.copy-button:hover {
+  background: var(--accent-red-hover);
+}
+
+.dismiss-button {
+  width: 100%;
+  padding: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.dismiss-button:hover {
+  background: var(--bg-secondary);
+}
+
+/* Token list */
+.tokens-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.token-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.token-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.token-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.token-prefix {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.token-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.token-delete-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--unavailable);
+  background: transparent;
+  border: 1px solid var(--unavailable);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.token-delete-button:hover:not(:disabled) {
+  background: var(--unavailable-bg);
+}
+
+.token-delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Create token form */
+.create-token-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.create-token-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.cancel-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background: var(--bg-tertiary);
+}
+
+.create-token-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.create-token-button:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.create-token-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  margin-left: var(--spacing-sm);
+  opacity: 0.7;
+}
+
+.error-dismiss:hover {
+  opacity: 1;
+}
+
 /* User info link styling */
 .user-info {
   text-decoration: none;
