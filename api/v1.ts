@@ -15,18 +15,21 @@
  *   Authorization: Bearer nat20_...
  */
 
-import { HttpApiBuilder, HttpMiddleware } from "@effect/platform"
+import { HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
 import { Layer } from "effect"
 import type { VercelRequest, VercelResponse } from "@vercel/node"
 import { Nat20ApiLive } from "./lib/handlers.js"
 import { Nat20Api } from "./lib/api.js"
 
 // Create web handler from Effect API
+// The API layer is provided with handler implementations
+const ApiLive = HttpApiBuilder.api(Nat20Api).pipe(
+  Layer.provide(Nat20ApiLive)
+)
+
+// Merge with HttpServer.layerContext to provide DefaultServices alongside Api
 const { handler } = HttpApiBuilder.toWebHandler(
-  Layer.mergeAll(
-    HttpApiBuilder.api(Nat20Api),
-    Nat20ApiLive,
-  ),
+  Layer.merge(ApiLive, HttpServer.layerContext),
   { middleware: HttpMiddleware.logger }
 )
 
@@ -45,7 +48,8 @@ export default async function vercelHandler(
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
   if (req.method === "OPTIONS") {
-    return res.status(200).end()
+    res.status(200).end()
+    return
   }
 
   try {

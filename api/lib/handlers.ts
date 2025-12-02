@@ -6,7 +6,7 @@
  */
 
 import { HttpApiBuilder, HttpApiMiddleware, HttpApiSecurity } from "@effect/platform"
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Redacted } from "effect"
 import {
   Nat20Api,
   Profile,
@@ -34,6 +34,12 @@ export class CurrentUser extends Context.Tag("CurrentUser")<
   { profileId: string }
 >() {}
 
+/**
+ * Stub layer for CurrentUser - satisfies type checker at composition time.
+ * At runtime, the Authentication middleware provides the actual user.
+ */
+const CurrentUserStub = Layer.succeed(CurrentUser, { profileId: "" })
+
 // ============================================================================
 // Authentication Middleware
 // ============================================================================
@@ -59,8 +65,11 @@ const AuthenticationLive = Layer.effect(
   Authentication,
   Effect.succeed(
     Authentication.of({
-      bearer: (token) =>
+      bearer: (redactedToken) =>
         Effect.gen(function* () {
+          // Unwrap the redacted token
+          const token = Redacted.value(redactedToken)
+
           // Validate nat20_ prefix
           if (!token.startsWith("nat20_")) {
             return yield* Effect.fail(
@@ -71,6 +80,7 @@ const AuthenticationLive = Layer.effect(
           const tokenHash = hashToken(token)
           const supabase = getServiceClient()
 
+          // Lookup token - map any DB error to Unauthorized (middleware can only fail with Unauthorized)
           const { data, error } = yield* Effect.tryPromise({
             try: () =>
               supabase
@@ -78,7 +88,7 @@ const AuthenticationLive = Layer.effect(
                 .select("id, profile_id")
                 .eq("token_hash", tokenHash)
                 .single(),
-            catch: () => new InternalError({ message: "Database error" }),
+            catch: () => new Unauthorized({ message: "Authentication failed" }),
           })
 
           if (error || !data) {
@@ -87,7 +97,7 @@ const AuthenticationLive = Layer.effect(
             )
           }
 
-          // Update last_used_at (fire and forget)
+          // Update last_used_at (fire and forget - ignore any errors)
           Effect.runFork(
             Effect.tryPromise({
               try: () =>
@@ -95,8 +105,8 @@ const AuthenticationLive = Layer.effect(
                   .from("api_tokens")
                   .update({ last_used_at: new Date().toISOString() })
                   .eq("id", data.id),
-              catch: () => undefined,
-            })
+              catch: () => new Error("Ignored"),
+            }).pipe(Effect.ignore)
           )
 
           return { profileId: data.profile_id }
@@ -134,7 +144,8 @@ const UserHandlers = HttpApiBuilder.group(Nat20Api, "user", (handlers) =>
         })
 
         if (error || !data) {
-          return yield* Effect.fail(new NotFound({ message: "Profile not found" }))
+          // Profile missing for authenticated user is an internal data inconsistency
+          return yield* Effect.fail(new InternalError({ message: "Profile not found" }))
         }
 
         return new Profile({
@@ -196,7 +207,7 @@ const UserHandlers = HttpApiBuilder.group(Nat20Api, "user", (handlers) =>
         )
       })
     )
-).pipe(Layer.provide(AuthenticationLive))
+).pipe(Layer.provide([AuthenticationLive, CurrentUserStub]))
 
 // ============================================================================
 // Availability Handlers
@@ -320,7 +331,7 @@ const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (han
         const isOwner = member.profile_id === user.profileId
 
         // Check if user is admin of the party
-        const { data: adminCheck } = yield* Effect.tryPromise({
+        const adminCheck = yield* Effect.tryPromise({
           try: () =>
             db
               .from("party_admins")
@@ -328,10 +339,10 @@ const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (han
               .eq("party_id", member.party_id)
               .eq("profile_id", user.profileId)
               .single(),
-          catch: () => undefined,
-        })
+          catch: () => new InternalError({ message: "Admin check failed" }),
+        }).pipe(Effect.catchAll(() => Effect.succeed({ data: null })))
 
-        const isAdmin = !!adminCheck
+        const isAdmin = !!adminCheck.data
 
         if (!isOwner && !isAdmin) {
           return yield* Effect.fail(
@@ -390,7 +401,8 @@ const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (han
 
         const isOwner = member.profile_id === user.profileId
 
-        const { data: adminCheck } = yield* Effect.tryPromise({
+        // Check if user is admin - treat query failure as "not admin"
+        const adminCheck = yield* Effect.tryPromise({
           try: () =>
             db
               .from("party_admins")
@@ -398,10 +410,10 @@ const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (han
               .eq("party_id", member.party_id)
               .eq("profile_id", user.profileId)
               .single(),
-          catch: () => undefined,
-        })
+          catch: () => new InternalError({ message: "Admin check failed" }),
+        }).pipe(Effect.catchAll(() => Effect.succeed({ data: null })))
 
-        const isAdmin = !!adminCheck
+        const isAdmin = !!adminCheck.data
 
         if (!isOwner && !isAdmin) {
           return yield* Effect.fail(
@@ -423,7 +435,7 @@ const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (han
         return new AvailabilityDeleted({ deleted: true })
       })
     )
-).pipe(Layer.provide(AuthenticationLive))
+).pipe(Layer.provide([AuthenticationLive, CurrentUserStub]))
 
 // ============================================================================
 // Combined API Layer
