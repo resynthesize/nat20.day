@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { validateApiToken, errorResponse, successResponse } from '../lib/auth.js'
-import { getServiceClient } from '../lib/supabase.js'
+import { validateApiToken, errorResponse, successResponse } from './lib/auth.js'
+import { getServiceClient } from './lib/supabase.js'
 
 /**
  * Programmatic API Router
