@@ -89,6 +89,59 @@ export class AvailabilityQueryParams extends Schema.Class<AvailabilityQueryParam
 }) {}
 
 // ============================================================================
+// Billing Schemas
+// ============================================================================
+
+/** Game type enum for party categorization */
+export const GameType = Schema.Literal("dnd", "mtg", "warhammer", "boardgames", "other")
+export type GameType = typeof GameType.Type
+
+/** Subscription status enum */
+export const SubscriptionStatus = Schema.Literal("active", "past_due", "canceled", "expired")
+export type SubscriptionStatus = typeof SubscriptionStatus.Type
+
+/** Subscription information */
+export class Subscription extends Schema.Class<Subscription>("Subscription")({
+  id: Schema.String.annotations({ description: "Subscription ID" }),
+  party_id: Schema.String.annotations({ description: "Party this subscription belongs to" }),
+  status: SubscriptionStatus.annotations({ description: "Current subscription status" }),
+  current_period_end: Schema.String.annotations({ description: "ISO 8601 timestamp when current period ends" }),
+  cancel_at_period_end: Schema.Boolean.annotations({ description: "Whether subscription cancels at period end" }),
+}) {}
+
+/** Request body for creating a checkout session */
+export class CreateCheckoutBody extends Schema.Class<CreateCheckoutBody>("CreateCheckoutBody")({
+  party_name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)).annotations({
+    description: "Name for the new party",
+    examples: ["The Dungeon Delvers"],
+  }),
+  game_type: Schema.optionalWith(GameType, { default: () => "dnd" as const }).annotations({
+    description: "Type of tabletop game",
+  }),
+}) {}
+
+/** Response from checkout session creation */
+export class CheckoutSession extends Schema.Class<CheckoutSession>("CheckoutSession")({
+  checkout_url: Schema.String.annotations({ description: "URL to redirect user to Stripe Checkout" }),
+  session_id: Schema.String.annotations({ description: "Stripe Checkout Session ID" }),
+}) {}
+
+/** Request body for creating a billing portal session */
+export class CreatePortalBody extends Schema.Class<CreatePortalBody>("CreatePortalBody")({
+  party_id: Schema.String.annotations({ description: "Party ID to manage billing for" }),
+}) {}
+
+/** Response from billing portal session creation */
+export class PortalSession extends Schema.Class<PortalSession>("PortalSession")({
+  portal_url: Schema.String.annotations({ description: "URL to redirect user to Stripe Billing Portal" }),
+}) {}
+
+/** Query params for getting subscription */
+export class SubscriptionQueryParams extends Schema.Class<SubscriptionQueryParams>("SubscriptionQueryParams")({
+  party_id: Schema.String.annotations({ description: "Party ID to get subscription for" }),
+}) {}
+
+// ============================================================================
 // Error Schemas
 // ============================================================================
 
@@ -122,6 +175,20 @@ export class InvalidInput extends Schema.TaggedError<InvalidInput>()("InvalidInp
 
 /** Internal server error */
 export class InternalError extends Schema.TaggedError<InternalError>()("InternalError", {
+  message: Schema.String.annotations({ description: "Error description" }),
+}) {
+  static readonly status = 500
+}
+
+/** Billing-related error */
+export class BillingError extends Schema.TaggedError<BillingError>()("BillingError", {
+  message: Schema.String.annotations({ description: "Error description" }),
+}) {
+  static readonly status = 402
+}
+
+/** Configuration error */
+export class ConfigError extends Schema.TaggedError<ConfigError>()("ConfigError", {
   message: Schema.String.annotations({ description: "Error description" }),
 }) {
   static readonly status = 500
@@ -185,6 +252,35 @@ const deleteAvailability = HttpApiEndpoint.del("deleteAvailability", "/availabil
   .annotate(OpenApi.Summary, "Clear availability")
   .annotate(OpenApi.Description, "Removes the availability record for a party member on a specific date. You must be the member or a party admin.")
 
+// ── Billing Endpoints ──────────────────────────────────────────────────────
+
+const createCheckout = HttpApiEndpoint.post("createCheckout", "/billing/checkout")
+  .setPayload(CreateCheckoutBody)
+  .addSuccess(CheckoutSession)
+  .addError(Unauthorized, { status: 401 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Create checkout session")
+  .annotate(OpenApi.Description, "Creates a Stripe Checkout session for a new party subscription. Redirect the user to the returned URL to complete payment.")
+
+const createPortal = HttpApiEndpoint.post("createPortal", "/billing/portal")
+  .setPayload(CreatePortalBody)
+  .addSuccess(PortalSession)
+  .addError(Unauthorized, { status: 401 })
+  .addError(Forbidden, { status: 403 })
+  .addError(NotFound, { status: 404 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Create billing portal session")
+  .annotate(OpenApi.Description, "Creates a Stripe Billing Portal session for managing an existing subscription. You must be an admin of the party.")
+
+const getSubscription = HttpApiEndpoint.get("getSubscription", "/billing/subscription")
+  .setUrlParams(SubscriptionQueryParams)
+  .addSuccess(Subscription)
+  .addError(Unauthorized, { status: 401 })
+  .addError(Forbidden, { status: 403 })
+  .addError(NotFound, { status: 404 })
+  .annotate(OpenApi.Summary, "Get subscription status")
+  .annotate(OpenApi.Description, "Returns the subscription status for a party. You must be a member of the party.")
+
 // ============================================================================
 // API Groups
 // ============================================================================
@@ -200,6 +296,12 @@ const availabilityGroup = HttpApiGroup.make("availability")
   .add(deleteAvailability)
   .annotate(OpenApi.Title, "Availability")
 
+const billingGroup = HttpApiGroup.make("billing")
+  .add(createCheckout)
+  .add(createPortal)
+  .add(getSubscription)
+  .annotate(OpenApi.Title, "Billing")
+
 // ============================================================================
 // Full API Definition
 // ============================================================================
@@ -207,6 +309,7 @@ const availabilityGroup = HttpApiGroup.make("availability")
 export class Nat20Api extends HttpApi.make("nat20")
   .add(userGroup)
   .add(availabilityGroup)
+  .add(billingGroup)
   .addError(Unauthorized, { status: 401 })
   .addError(InternalError, { status: 500 })
   .annotate(OpenApi.Title, "nat20.day API")

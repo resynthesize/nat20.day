@@ -63,3 +63,12 @@ variable "google_client_secret" {
   type        = string
   sensitive   = true
 }
+
+# Stripe (for billing)
+# Note: stripe_price_id and stripe_webhook_secret are created by Terraform
+# and don't need to be provided as variables
+variable "stripe_secret_key" {
+  description = "Stripe secret API key (sk_live_... or sk_test_...)"
+  type        = string
+  sensitive   = true
+}

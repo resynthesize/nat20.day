@@ -5,11 +5,19 @@ import { useParty } from '../../hooks/useParty'
 import { useAuth } from '../../hooks/useAuth'
 import { parsePartyMembers, type PartyMember } from '../../lib/schemas'
 
-type TabType = 'members' | 'settings'
+type TabType = 'members' | 'settings' | 'billing'
 
 interface AdminInfo {
   profile_id: string
   profiles: { id: string; display_name: string; avatar_url: string | null } | null
+}
+
+interface SubscriptionInfo {
+  id: string
+  party_id: string
+  status: 'active' | 'past_due' | 'canceled' | 'expired'
+  current_period_end: string
+  cancel_at_period_end: boolean
 }
 
 export function AdminPanel() {
@@ -31,6 +39,11 @@ export function AdminPanel() {
   // Edit party name
   const [partyName, setPartyName] = useState(currentParty?.name || '')
   const [savingName, setSavingName] = useState(false)
+
+  // Billing
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
+  const [loadingSubscription, setLoadingSubscription] = useState(false)
+  const [openingPortal, setOpeningPortal] = useState(false)
 
   // Redirect if not admin
   useEffect(() => {
@@ -233,6 +246,93 @@ export function AdminPanel() {
 
   const isUserAdmin = (profileId: string) => admins.some((a) => a.profile_id === profileId)
 
+  // Fetch subscription when billing tab is active
+  const fetchSubscription = useCallback(async () => {
+    if (!currentParty) return
+
+    setLoadingSubscription(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(`/api/v1/billing/subscription?party_id=${currentParty.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setSubscription(data)
+      } else if (response.status === 404) {
+        setSubscription(null)
+      }
+    } catch (err) {
+      console.error('Failed to fetch subscription:', err)
+    } finally {
+      setLoadingSubscription(false)
+    }
+  }, [currentParty])
+
+  useEffect(() => {
+    if (activeTab === 'billing') {
+      fetchSubscription()
+    }
+  }, [activeTab, fetchSubscription])
+
+  const handleOpenBillingPortal = async () => {
+    if (!currentParty) return
+
+    setOpeningPortal(true)
+    setError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('You must be logged in to manage billing')
+        return
+      }
+
+      const response = await fetch('/api/v1/billing/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ party_id: currentParty.id }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to open billing portal')
+      }
+
+      const { portal_url } = await response.json()
+      window.location.href = portal_url
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to open billing portal')
+      setOpeningPortal(false)
+    }
+  }
+
+  const formatDate = (isoDate: string) => {
+    return new Date(isoDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'active': return 'Active'
+      case 'past_due': return 'Past Due'
+      case 'canceled': return 'Canceled'
+      case 'expired': return 'Expired'
+      default: return status
+    }
+  }
+
   if (!currentParty) {
     return (
       <div className="admin-panel">
@@ -266,6 +366,13 @@ export function AdminPanel() {
           onClick={() => setActiveTab('settings')}
         >
           Settings
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${activeTab === 'billing' ? 'active' : ''}`}
+          onClick={() => setActiveTab('billing')}
+        >
+          Billing
         </button>
       </div>
 
@@ -368,7 +475,7 @@ export function AdminPanel() {
               ))}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'settings' ? (
           <div className="settings-tab">
             <form onSubmit={handleSavePartyName} className="settings-form">
               <h3>Party Name</h3>
@@ -425,6 +532,78 @@ export function AdminPanel() {
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="billing-tab">
+            {loadingSubscription ? (
+              <div className="loading">Loading subscription...</div>
+            ) : subscription ? (
+              <>
+                <div className="subscription-card">
+                  <div className="subscription-header">
+                    <h3>Subscription Status</h3>
+                    <span className={`subscription-status subscription-${subscription.status}`}>
+                      {getStatusLabel(subscription.status)}
+                    </span>
+                  </div>
+
+                  {subscription.id === 'demo' ? (
+                    <p className="subscription-info">
+                      This is a demo party with unlimited access for exploration.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="subscription-details">
+                        <div className="subscription-detail">
+                          <span className="detail-label">Plan</span>
+                          <span className="detail-value">$10/year</span>
+                        </div>
+                        <div className="subscription-detail">
+                          <span className="detail-label">
+                            {subscription.cancel_at_period_end ? 'Expires' : 'Renews'}
+                          </span>
+                          <span className="detail-value">
+                            {formatDate(subscription.current_period_end)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {subscription.cancel_at_period_end && (
+                        <div className="subscription-warning">
+                          Your subscription will not renew. Access will end on{' '}
+                          {formatDate(subscription.current_period_end)}.
+                        </div>
+                      )}
+
+                      {subscription.status === 'past_due' && (
+                        <div className="subscription-warning">
+                          Your payment is past due. Please update your payment method to maintain access.
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        className="billing-portal-button"
+                        onClick={handleOpenBillingPortal}
+                        disabled={openingPortal}
+                      >
+                        {openingPortal ? 'Opening...' : 'Manage Subscription'}
+                      </button>
+                      <p className="billing-hint">
+                        Update payment method, view invoices, or cancel subscription.
+                      </p>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="no-subscription">
+                <p>No subscription found for this party.</p>
+                <p className="billing-hint">
+                  This party may have been created before billing was enabled or the subscription has expired.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

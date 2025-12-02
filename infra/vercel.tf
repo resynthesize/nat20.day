@@ -42,3 +42,25 @@ resource "vercel_project_environment_variable" "supabase_url" {
 # Note: VITE_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY must be added
 # manually in Vercel dashboard after Supabase project is created.
 # Get keys from: https://supabase.com/dashboard/project/{project_id}/settings/api
+
+# Stripe environment variables (for billing)
+resource "vercel_project_environment_variable" "stripe_secret_key" {
+  project_id = vercel_project.main.id
+  key        = "STRIPE_SECRET_KEY"
+  value      = var.stripe_secret_key
+  target     = ["production", "preview"]
+}
+
+resource "vercel_project_environment_variable" "stripe_webhook_secret" {
+  project_id = vercel_project.main.id
+  key        = "STRIPE_WEBHOOK_SECRET"
+  value      = stripe_webhook_endpoint.main.secret
+  target     = ["production"] # Webhook secret is environment-specific
+}
+
+resource "vercel_project_environment_variable" "stripe_price_id" {
+  project_id = vercel_project.main.id
+  key        = "STRIPE_PRICE_ID"
+  value      = stripe_price.party_annual.id
+  target     = ["production", "preview"]
+}

@@ -38,7 +38,7 @@ export class CurrentUser extends Context.Tag("CurrentUser")<
  * Stub layer for CurrentUser - satisfies type checker at composition time.
  * At runtime, the Authentication middleware provides the actual user.
  */
-const CurrentUserStub = Layer.succeed(CurrentUser, { profileId: "" })
+export const CurrentUserStub = Layer.succeed(CurrentUser, { profileId: "" })
 
 // ============================================================================
 // Authentication Middleware
@@ -61,7 +61,7 @@ export class Authentication extends HttpApiMiddleware.Tag<Authentication>()(
 ) {}
 
 /** Authentication implementation layer */
-const AuthenticationLive = Layer.effect(
+export const AuthenticationLive = Layer.effect(
   Authentication,
   Effect.succeed(
     Authentication.of({
@@ -441,4 +441,5 @@ const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (han
 // Combined API Layer
 // ============================================================================
 
+// Note: BillingHandlers is imported and merged in api/v1.ts to avoid circular deps
 export const Nat20ApiLive = Layer.mergeAll(UserHandlers, AvailabilityHandlers)

@@ -10,6 +10,9 @@
  *   GET  /api/v1/parties/:id/availability        - Get availability for a party
  *   PUT  /api/v1/availability/:memberId/:date    - Set availability
  *   DELETE /api/v1/availability/:memberId/:date  - Clear availability
+ *   POST /api/v1/billing/checkout                - Create Stripe Checkout session
+ *   POST /api/v1/billing/portal                  - Create Stripe Billing Portal session
+ *   GET  /api/v1/billing/subscription            - Get subscription status
  *
  * All endpoints require Bearer token authentication:
  *   Authorization: Bearer nat20_...
@@ -19,12 +22,16 @@ import { HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
 import { Layer } from "effect"
 import type { VercelRequest, VercelResponse } from "@vercel/node"
 import { Nat20ApiLive } from "./lib/handlers.js"
+import { BillingHandlers } from "./lib/billing-handlers.js"
 import { Nat20Api } from "./lib/api.js"
+
+// Merge all handler layers
+const AllHandlers = Layer.mergeAll(Nat20ApiLive, BillingHandlers)
 
 // Create web handler from Effect API
 // The API layer is provided with handler implementations
 const ApiLive = HttpApiBuilder.api(Nat20Api).pipe(
-  Layer.provide(Nat20ApiLive)
+  Layer.provide(AllHandlers)
 )
 
 // Merge with HttpServer.layerContext to provide DefaultServices alongside Api

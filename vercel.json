@@ -5,6 +5,11 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "outputDirectory": "dist",
+  "functions": {
+    "api/stripe-webhook.ts": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/api/v1/:path*", "destination": "/api/v1" },
     { "source": "/api/:path*", "destination": "/api/:path*" },

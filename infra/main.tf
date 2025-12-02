@@ -14,6 +14,10 @@ terraform {
       source  = "supabase/supabase"
       version = "~> 1.0"
     }
+    stripe = {
+      source  = "lukasaron/stripe"
+      version = "~> 3.4"
+    }
   }
 
   # Uncomment for remote state (recommended for production)
@@ -34,4 +38,8 @@ provider "cloudflare" {
 
 provider "supabase" {
   access_token = var.supabase_access_token
+}
+
+provider "stripe" {
+  api_key = var.stripe_secret_key
 }
