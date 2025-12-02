@@ -51,7 +51,7 @@ export default async function vercelHandler(
 ): Promise<void> {
   // Handle CORS preflight
   res.setHeader("Access-Control-Allow-Origin", "*")
-  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
   if (req.method === "OPTIONS") {
@@ -61,7 +61,10 @@ export default async function vercelHandler(
 
   try {
     // Convert Vercel request to standard Request
-    const url = new URL(req.url || "/", `https://${req.headers.host}`)
+    // Strip /api/v1 prefix since Effect routes are defined without it
+    const originalPath = req.url || "/"
+    const strippedPath = originalPath.replace(/^\/api\/v1/, "") || "/"
+    const url = new URL(strippedPath, `https://${req.headers.host}`)
     const headers = new Headers()
     for (const [key, value] of Object.entries(req.headers)) {
       if (value) {
