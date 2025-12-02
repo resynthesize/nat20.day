@@ -109,17 +109,25 @@ export const AuthenticationLive = Layer.effect(
 
           // Otherwise, try to validate as Supabase JWT (for billing endpoints)
           // This allows users to create parties before they have an API token
+          console.log("[Auth] Validating Supabase JWT...")
           const { data: userData, error: userError } = yield* Effect.tryPromise({
             try: () => supabase.auth.getUser(token),
-            catch: () => new Unauthorized({ message: "Invalid session token" }),
+            catch: (e) => {
+              console.error("[Auth] getUser threw:", e)
+              return new Unauthorized({ message: "Invalid session token" })
+            },
           })
 
+          console.log("[Auth] getUser result:", { userData, userError })
+
           if (userError || !userData.user) {
+            console.error("[Auth] JWT validation failed:", userError)
             return yield* Effect.fail(
               new Unauthorized({ message: "Invalid or expired session" })
             )
           }
 
+          console.log("[Auth] JWT validated, user ID:", userData.user.id)
           return { profileId: userData.user.id }
         }),
     })
