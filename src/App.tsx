@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { DocsPage } from './pages/DocsPage'
 import { PartyProvider, useParty } from './hooks/useParty'
 import { LoginButton } from './components/auth/LoginButton'
 import { ScheduleGrid } from './components/schedule/ScheduleGrid'
@@ -101,10 +102,16 @@ function AuthenticatedApp() {
 
 function App() {
   const { loading, signInWithGoogle, isAuthenticated } = useAuth()
+  const location = useLocation()
 
   const [tagline] = useState(
     () => taglines[Math.floor(Math.random() * taglines.length)]
   )
+
+  // Serve docs publicly without authentication
+  if (location.pathname.startsWith('/docs')) {
+    return <DocsPage />
+  }
 
   if (loading) {
     return (

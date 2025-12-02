@@ -37,3 +37,6 @@ infra/.terraform.lock.hcl
 supabase/.temp/
 supabase/seed.sql
 .env*.local
+
+# Generated files
+public/openapi.json

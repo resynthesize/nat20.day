@@ -1,12 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { validateApiToken, errorResponse, successResponse } from './lib/auth.js'
-import { getServiceClient } from './lib/supabase.js'
-
 /**
- * Programmatic API Router
+ * nat20.day Programmatic API v1
  *
- * All routes require API token authentication via Authorization header:
- *   Authorization: Bearer nat20_...
+ * This serverless function handles all /api/v1/* routes using Effect HttpApi.
+ * Documentation is auto-generated at /docs from the API schema definitions.
  *
  * Endpoints:
  *   GET  /api/v1/me                              - Get user profile
@@ -14,312 +10,83 @@ import { getServiceClient } from './lib/supabase.js'
  *   GET  /api/v1/parties/:id/availability        - Get availability for a party
  *   PUT  /api/v1/availability/:memberId/:date    - Set availability
  *   DELETE /api/v1/availability/:memberId/:date  - Clear availability
+ *
+ * All endpoints require Bearer token authentication:
+ *   Authorization: Bearer nat20_...
  */
 
-interface ApiContext {
-  profileId: string
-  supabase: ReturnType<typeof getServiceClient>
-}
+import { HttpApiBuilder, HttpMiddleware } from "@effect/platform"
+import { Layer } from "effect"
+import type { VercelRequest, VercelResponse } from "@vercel/node"
+import { Nat20ApiLive } from "./lib/handlers.js"
+import { Nat20Api } from "./lib/api.js"
 
-type RouteHandler = (
+// Create web handler from Effect API
+const { handler } = HttpApiBuilder.toWebHandler(
+  Layer.mergeAll(
+    HttpApiBuilder.api(Nat20Api),
+    Nat20ApiLive,
+  ),
+  { middleware: HttpMiddleware.logger }
+)
+
+/**
+ * Vercel serverless function handler
+ *
+ * Bridges the Vercel request/response model to Effect's web handler.
+ */
+export default async function vercelHandler(
   req: VercelRequest,
-  res: VercelResponse,
-  ctx: ApiContext,
-  params: Record<string, string>
-) => Promise<void>
+  res: VercelResponse
+): Promise<void> {
+  // Handle CORS preflight
+  res.setHeader("Access-Control-Allow-Origin", "*")
+  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-// Simple path pattern matching
-function matchRoute(
-  path: string,
-  method: string,
-  routes: Array<{ pattern: string; method: string; handler: RouteHandler }>
-): { handler: RouteHandler; params: Record<string, string> } | null {
-  for (const route of routes) {
-    if (route.method !== method) continue
-
-    const patternParts = route.pattern.split('/')
-    const pathParts = path.split('/')
-
-    if (patternParts.length !== pathParts.length) continue
-
-    const params: Record<string, string> = {}
-    let matches = true
-
-    for (let i = 0; i < patternParts.length; i++) {
-      if (patternParts[i].startsWith(':')) {
-        params[patternParts[i].slice(1)] = pathParts[i]
-      } else if (patternParts[i] !== pathParts[i]) {
-        matches = false
-        break
-      }
-    }
-
-    if (matches) {
-      return { handler: route.handler, params }
-    }
-  }
-  return null
-}
-
-// Route handlers
-const handleGetMe: RouteHandler = async (_req, res, ctx) => {
-  const { data, error } = await ctx.supabase
-    .from('profiles')
-    .select('slug, display_name, avatar_url, created_at')
-    .eq('id', ctx.profileId)
-    .single()
-
-  if (error || !data) {
-    return res.status(404).json(errorResponse('NOT_FOUND', 'Profile not found', 404))
-  }
-
-  // Return slug as "id" for consistent API
-  res.json(successResponse({
-    id: data.slug,
-    display_name: data.display_name,
-    avatar_url: data.avatar_url,
-    created_at: data.created_at,
-  }))
-}
-
-const handleGetParties: RouteHandler = async (_req, res, ctx) => {
-  // Get parties where user is a member
-  const { data: memberData, error: memberError } = await ctx.supabase
-    .from('party_members')
-    .select('party_id')
-    .eq('profile_id', ctx.profileId)
-
-  if (memberError) {
-    return res.status(500).json(errorResponse('DB_ERROR', 'Failed to fetch parties', 500))
-  }
-
-  const partyIds = memberData.map((m) => m.party_id)
-
-  if (partyIds.length === 0) {
-    return res.json(successResponse([]))
-  }
-
-  const { data: parties, error: partiesError } = await ctx.supabase
-    .from('parties')
-    .select('id, name, created_at')
-    .in('id', partyIds)
-    .order('name')
-
-  if (partiesError) {
-    return res.status(500).json(errorResponse('DB_ERROR', 'Failed to fetch parties', 500))
-  }
-
-  res.json(successResponse(parties))
-}
-
-const handleGetPartyAvailability: RouteHandler = async (req, res, ctx, params) => {
-  const partyId = params.id
-
-  // Verify user is a member of this party
-  const { data: membership, error: memberError } = await ctx.supabase
-    .from('party_members')
-    .select('id')
-    .eq('party_id', partyId)
-    .eq('profile_id', ctx.profileId)
-    .single()
-
-  if (memberError || !membership) {
-    return res.status(403).json(errorResponse('FORBIDDEN', 'Not a member of this party', 403))
-  }
-
-  // Get optional date range from query params
-  const fromDate = (req.query.from as string) || new Date().toISOString().split('T')[0]
-  const toDate = req.query.to as string
-
-  // Get all party members with profile info
-  const { data: members, error: membersError } = await ctx.supabase
-    .from('party_members')
-    .select('id, name, profiles(slug, display_name, avatar_url)')
-    .eq('party_id', partyId)
-    .order('name')
-
-  if (membersError) {
-    return res.status(500).json(errorResponse('DB_ERROR', 'Failed to fetch members', 500))
-  }
-
-  // Get availability
-  let availabilityQuery = ctx.supabase
-    .from('availability')
-    .select('id, party_member_id, date, available, updated_at')
-    .in('party_member_id', members.map((m) => m.id))
-    .gte('date', fromDate)
-    .order('date')
-
-  if (toDate) {
-    availabilityQuery = availabilityQuery.lte('date', toDate)
-  }
-
-  const { data: availability, error: availError } = await availabilityQuery
-
-  if (availError) {
-    return res.status(500).json(errorResponse('DB_ERROR', 'Failed to fetch availability', 500))
-  }
-
-  // Format response with short IDs
-  const profile = (m: typeof members[0]) => m.profiles as { slug?: string; display_name?: string; avatar_url?: string } | null
-
-  res.json(
-    successResponse({
-      party_id: partyId,
-      members: members.map((m) => ({
-        id: m.id,
-        name: m.name,
-        user_id: profile(m)?.slug || null,  // Short user ID or null if not linked
-        display_name: profile(m)?.display_name || m.name,
-        avatar_url: profile(m)?.avatar_url || null,
-      })),
-      availability,
-    })
-  )
-}
-
-const handleSetAvailability: RouteHandler = async (req, res, ctx, params) => {
-  const { memberId, date } = params
-  const { available } = req.body as { available?: boolean }
-
-  if (typeof available !== 'boolean') {
-    return res.status(400).json(errorResponse('INVALID_INPUT', 'available must be a boolean', 400))
-  }
-
-  // Verify user owns this party member or is an admin
-  const { data: member, error: memberError } = await ctx.supabase
-    .from('party_members')
-    .select('id, party_id, profile_id')
-    .eq('id', memberId)
-    .single()
-
-  if (memberError || !member) {
-    return res.status(404).json(errorResponse('NOT_FOUND', 'Party member not found', 404))
-  }
-
-  // Check if user owns this member
-  const isOwner = member.profile_id === ctx.profileId
-
-  // Check if user is admin of the party
-  const { data: adminCheck } = await ctx.supabase
-    .from('party_admins')
-    .select('profile_id')
-    .eq('party_id', member.party_id)
-    .eq('profile_id', ctx.profileId)
-    .single()
-
-  const isAdmin = !!adminCheck
-
-  if (!isOwner && !isAdmin) {
-    return res.status(403).json(errorResponse('FORBIDDEN', 'Cannot edit this member\'s availability', 403))
-  }
-
-  // Upsert availability
-  const { error: upsertError } = await ctx.supabase.from('availability').upsert(
-    {
-      party_member_id: memberId,
-      date,
-      available,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'party_member_id,date' }
-  )
-
-  if (upsertError) {
-    return res.status(500).json(errorResponse('DB_ERROR', 'Failed to set availability', 500))
-  }
-
-  res.json(successResponse({ party_member_id: memberId, date, available }))
-}
-
-const handleDeleteAvailability: RouteHandler = async (_req, res, ctx, params) => {
-  const { memberId, date } = params
-
-  // Verify user owns this party member or is an admin
-  const { data: member, error: memberError } = await ctx.supabase
-    .from('party_members')
-    .select('id, party_id, profile_id')
-    .eq('id', memberId)
-    .single()
-
-  if (memberError || !member) {
-    return res.status(404).json(errorResponse('NOT_FOUND', 'Party member not found', 404))
-  }
-
-  const isOwner = member.profile_id === ctx.profileId
-
-  const { data: adminCheck } = await ctx.supabase
-    .from('party_admins')
-    .select('profile_id')
-    .eq('party_id', member.party_id)
-    .eq('profile_id', ctx.profileId)
-    .single()
-
-  const isAdmin = !!adminCheck
-
-  if (!isOwner && !isAdmin) {
-    return res.status(403).json(errorResponse('FORBIDDEN', 'Cannot edit this member\'s availability', 403))
-  }
-
-  // Delete availability
-  const { error: deleteError } = await ctx.supabase
-    .from('availability')
-    .delete()
-    .eq('party_member_id', memberId)
-    .eq('date', date)
-
-  if (deleteError) {
-    return res.status(500).json(errorResponse('DB_ERROR', 'Failed to clear availability', 500))
-  }
-
-  res.json(successResponse({ deleted: true }))
-}
-
-// Route definitions
-const routes: Array<{ pattern: string; method: string; handler: RouteHandler }> = [
-  { pattern: 'me', method: 'GET', handler: handleGetMe },
-  { pattern: 'parties', method: 'GET', handler: handleGetParties },
-  { pattern: 'parties/:id/availability', method: 'GET', handler: handleGetPartyAvailability },
-  { pattern: 'availability/:memberId/:date', method: 'PUT', handler: handleSetAvailability },
-  { pattern: 'availability/:memberId/:date', method: 'DELETE', handler: handleDeleteAvailability },
-]
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end()
   }
 
-  // Validate API token
-  const authResult = await validateApiToken(req.headers.authorization)
-  if (!authResult.valid || !authResult.profileId) {
-    return res.status(401).json(errorResponse('UNAUTHORIZED', authResult.error || 'Invalid token', 401))
-  }
-
-  // Parse path from URL (more reliable than req.query.path)
-  const url = new URL(req.url || '', `https://${req.headers.host}`)
-  const path = url.pathname.replace(/^\/api\/v1\/?/, '') // Remove /api/v1/ prefix
-  const method = req.method || 'GET'
-
-  // Match route
-  const match = matchRoute(path, method, routes)
-  if (!match) {
-    return res.status(404).json(errorResponse('NOT_FOUND', `No route for ${method} /api/v1/${path}`, 404))
-  }
-
-  // Execute handler
   try {
-    const ctx: ApiContext = {
-      profileId: authResult.profileId,
-      supabase: getServiceClient(),
+    // Convert Vercel request to standard Request
+    const url = new URL(req.url || "/", `https://${req.headers.host}`)
+    const headers = new Headers()
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value) {
+        headers.set(key, Array.isArray(value) ? value.join(", ") : value)
+      }
     }
-    await match.handler(req, res, ctx, match.params)
-  } catch (err) {
-    console.error('API error:', err)
-    res.status(500).json(errorResponse('INTERNAL_ERROR', 'Internal server error', 500))
+
+    const request = new Request(url.toString(), {
+      method: req.method,
+      headers,
+      body: req.method !== "GET" && req.method !== "HEAD" ? JSON.stringify(req.body) : undefined,
+    })
+
+    // Handle with Effect
+    const response = await handler(request)
+
+    // Set status and headers
+    res.status(response.status)
+    response.headers.forEach((value, key) => {
+      // Don't override CORS headers we already set
+      if (!key.toLowerCase().startsWith("access-control-")) {
+        res.setHeader(key, value)
+      }
+    })
+
+    // Send response body
+    const body = await response.text()
+    res.send(body)
+  } catch (error) {
+    console.error("API error:", error)
+    res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Internal server error",
+      },
+    })
   }
 }

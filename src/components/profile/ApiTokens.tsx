@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApiTokens } from '../../hooks/useApiTokens'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -67,7 +68,8 @@ export function ApiTokens({ userId }: ApiTokensProps) {
       <div className="tokens-header">
         <h3>API Tokens</h3>
         <p className="tokens-description">
-          Generate tokens to access nat20.day programmatically (e.g., for bots or automations).
+          Generate tokens to access nat20.day programmatically.{' '}
+          <Link to="/docs" className="docs-link">View API documentation →</Link>
         </p>
       </div>
 
