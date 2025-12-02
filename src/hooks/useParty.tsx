@@ -120,6 +120,7 @@ export function PartyProvider({ children }: { children: ReactNode }) {
   // Fetch parties when user changes
   useEffect(() => {
     console.log('[Party] useEffect: triggering refreshParties')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: fetch on mount
     refreshParties()
   }, [refreshParties])
 

@@ -188,7 +188,7 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
         fetchData(false)
       }
     },
-    [fetchData, partyId]
+    [fetchData]
   )
 
   const clearAvailability = useCallback(
@@ -219,7 +219,7 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
         fetchData(false)
       }
     },
-    [fetchData, partyId]
+    [fetchData]
   )
 
   // Fetch data when partyId changes
