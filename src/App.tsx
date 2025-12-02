@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { DocsPage } from './pages/DocsPage'
+import { OAuthConsentPage } from './pages/OAuthConsentPage'
 import { PartyProvider, useParty } from './hooks/useParty'
 import { AuthTabs } from './components/auth/AuthTabs'
 import { ScheduleGrid } from './components/schedule/ScheduleGrid'
@@ -111,6 +112,11 @@ function App() {
   // Serve docs publicly without authentication
   if (location.pathname.startsWith('/docs')) {
     return <DocsPage />
+  }
+
+  // OAuth consent page handles its own auth flow
+  if (location.pathname.startsWith('/oauth/consent')) {
+    return <OAuthConsentPage />
   }
 
   if (loading) {
