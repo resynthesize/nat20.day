@@ -3,9 +3,12 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:tld-list.com)",
-      "WebFetch(domain:cfdomainpricing.com)"
+      "WebFetch(domain:cfdomainpricing.com)",
+      "Bash(tree:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "Explanatory"
 }

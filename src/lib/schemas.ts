@@ -1,10 +1,13 @@
 import { z } from 'zod'
 
+// =============================================================================
+// Profile Schemas
+// =============================================================================
+
 export const ProfileSchema = z.object({
   id: z.string(),
   display_name: z.string(),
   avatar_url: z.string().nullable(),
-  is_admin: z.boolean(),
   created_at: z.string(),
 })
 
@@ -15,8 +18,42 @@ const ProfileJoinSchema = z.object({
   avatar_url: z.string().nullable(),
 })
 
+// =============================================================================
+// Party Schemas
+// =============================================================================
+
+export const PartySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  created_at: z.string(),
+})
+
+export type Party = z.infer<typeof PartySchema>
+
+export const PartyAdminSchema = z.object({
+  party_id: z.string(),
+  profile_id: z.string(),
+  created_at: z.string(),
+})
+
+export type PartyAdmin = z.infer<typeof PartyAdminSchema>
+
+// Party with admin info (for checking if current user is admin)
+export const PartyWithAdminsSchema = PartySchema.extend({
+  party_admins: z.array(z.object({
+    profile_id: z.string(),
+  })),
+})
+
+export type PartyWithAdmins = z.infer<typeof PartyWithAdminsSchema>
+
+// =============================================================================
+// Party Member Schemas
+// =============================================================================
+
 export const PartyMemberSchema = z.object({
   id: z.string(),
+  party_id: z.string(),
   name: z.string(),
   email: z.string().nullable(),
   profile_id: z.string().nullable(),
@@ -25,6 +62,10 @@ export const PartyMemberSchema = z.object({
 })
 
 export type PartyMember = z.infer<typeof PartyMemberSchema>
+
+// =============================================================================
+// Availability Schemas
+// =============================================================================
 
 export const AvailabilitySchema = z.object({
   id: z.string(),
@@ -46,6 +87,10 @@ export const AvailabilityWithMemberSchema = AvailabilitySchema.extend({
 
 export type AvailabilityWithMember = z.infer<typeof AvailabilityWithMemberSchema>
 
+// =============================================================================
+// Parse Functions
+// =============================================================================
+
 export const parseProfile = (data: unknown): Profile | null => {
   const result = ProfileSchema.safeParse(data)
   return result.success ? result.data : null
@@ -59,4 +104,14 @@ export const parsePartyMembers = (data: unknown): PartyMember[] => {
 export const parseAvailabilityWithMembers = (data: unknown): AvailabilityWithMember[] => {
   const result = z.array(AvailabilityWithMemberSchema).safeParse(data)
   return result.success ? result.data : []
+}
+
+export const parseParties = (data: unknown): PartyWithAdmins[] => {
+  const result = z.array(PartyWithAdminsSchema).safeParse(data)
+  return result.success ? result.data : []
+}
+
+export const parseParty = (data: unknown): PartyWithAdmins | null => {
+  const result = PartyWithAdminsSchema.safeParse(data)
+  return result.success ? result.data : null
 }

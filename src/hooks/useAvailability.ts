@@ -16,7 +16,11 @@ interface AvailabilityState {
   error: string | null
 }
 
-export function useAvailability() {
+interface UseAvailabilityOptions {
+  partyId: string | null
+}
+
+export function useAvailability({ partyId }: UseAvailabilityOptions) {
   const [state, setState] = useState<AvailabilityState>({
     dates: [],
     partyMembers: [],
@@ -29,6 +33,18 @@ export function useAvailability() {
   const mutatingRef = useRef(false)
 
   const fetchData = useCallback(async (showLoading = true) => {
+    // Don't fetch if no party is selected
+    if (!partyId) {
+      setState({
+        dates: [],
+        partyMembers: [],
+        availability: [],
+        loading: false,
+        error: null,
+      })
+      return
+    }
+
     if (showLoading) {
       setState((s) => ({ ...s, loading: true, error: null }))
     }
@@ -43,6 +59,7 @@ export function useAvailability() {
           .from('party_members')
           .select(`
             id,
+            party_id,
             name,
             email,
             profile_id,
@@ -52,6 +69,7 @@ export function useAvailability() {
               avatar_url
             )
           `)
+          .eq('party_id', partyId)
           .order('name'),
         supabase
           .from('availability')
@@ -62,9 +80,11 @@ export function useAvailability() {
             available,
             updated_at,
             party_members!inner (
-              name
+              name,
+              party_id
             )
           `)
+          .eq('party_members.party_id', partyId)
           .gte('date', fromDate)
           .lte('date', toDate)
           .order('date'),
@@ -98,7 +118,7 @@ export function useAvailability() {
         error: err instanceof Error ? err.message : 'Failed to fetch data',
       }))
     }
-  }, [])
+  }, [partyId])
 
   const setAvailability = useCallback(
     async (memberId: string, date: string, available: boolean) => {
@@ -147,7 +167,7 @@ export function useAvailability() {
         fetchData(false)
       }
     },
-    [fetchData]
+    [fetchData, partyId]
   )
 
   const clearAvailability = useCallback(
@@ -178,16 +198,20 @@ export function useAvailability() {
         fetchData(false)
       }
     },
-    [fetchData]
+    [fetchData, partyId]
   )
 
+  // Fetch data when partyId changes
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+  }, [fetchData, partyId])
 
+  // Subscribe to realtime updates
   useEffect(() => {
+    if (!partyId) return
+
     const channel = supabase
-      .channel('availability-changes')
+      .channel(`availability-changes-${partyId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'availability' },
@@ -203,7 +227,7 @@ export function useAvailability() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [fetchData])
+  }, [fetchData, partyId])
 
   const getAvailability = useCallback(
     (memberId: string, date: string) => {

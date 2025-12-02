@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { Routes, Route, Link } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { PartyProvider, useParty } from './hooks/useParty'
 import { LoginButton } from './components/auth/LoginButton'
 import { ScheduleGrid } from './components/schedule/ScheduleGrid'
 import { ProfilePage } from './components/profile/ProfilePage'
+import { AdminPanel } from './components/admin/AdminPanel'
+import { PartySelector } from './components/party/PartySelector'
+import { CreatePartyModal } from './components/party/CreatePartyModal'
 import './App.css'
 
 const taglines = [
@@ -19,43 +23,26 @@ const taglines = [
   "Critical success requires a gathered party.",
 ]
 
-function App() {
-  const { user, profile, loading, signInWithGoogle, signOut, isAuthenticated } =
-    useAuth()
-
-  const [tagline] = useState(
-    () => taglines[Math.floor(Math.random() * taglines.length)]
-  )
-
-  if (loading) {
-    return (
-      <div className="app loading-screen">
-        <div className="loading-spinner" />
-        <p>Rolling for initiative...</p>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="app login-screen">
-        <div className="login-container">
-          <h1 className="title">nat20.day</h1>
-          <p className="subtitle">D&D Session Scheduler</p>
-          <p className="tagline">"{tagline}"</p>
-          <LoginButton onClick={signInWithGoogle} />
-        </div>
-      </div>
-    )
-  }
+function AuthenticatedApp() {
+  const { user, profile, signOut } = useAuth()
+  const { isAdmin } = useParty()
+  const [showCreatePartyModal, setShowCreatePartyModal] = useState(false)
 
   return (
     <div className="app">
       <header className="header">
         <div className="header-left">
-          <h1 className="title">nat20.day</h1>
+          <Link to="/" className="title-link">
+            <h1 className="title">nat20.day</h1>
+          </Link>
+          <PartySelector onCreateParty={() => setShowCreatePartyModal(true)} />
         </div>
         <div className="header-right">
+          {isAdmin && (
+            <Link to="/admin" className="admin-link">
+              Settings
+            </Link>
+          )}
           <Link to="/profile" className="user-info">
             {profile?.avatar_url ? (
               <img
@@ -86,6 +73,7 @@ function App() {
         <Routes>
           <Route path="/" element={<ScheduleGrid />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/admin" element={<AdminPanel />} />
         </Routes>
       </main>
 
@@ -102,7 +90,48 @@ function App() {
           </a>
         </p>
       </footer>
+
+      <CreatePartyModal
+        isOpen={showCreatePartyModal}
+        onClose={() => setShowCreatePartyModal(false)}
+      />
     </div>
+  )
+}
+
+function App() {
+  const { loading, signInWithGoogle, isAuthenticated } = useAuth()
+
+  const [tagline] = useState(
+    () => taglines[Math.floor(Math.random() * taglines.length)]
+  )
+
+  if (loading) {
+    return (
+      <div className="app loading-screen">
+        <div className="loading-spinner" />
+        <p>Rolling for initiative...</p>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app login-screen">
+        <div className="login-container">
+          <h1 className="title">nat20.day</h1>
+          <p className="subtitle">D&D Session Scheduler</p>
+          <p className="tagline">"{tagline}"</p>
+          <LoginButton onClick={signInWithGoogle} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <PartyProvider>
+      <AuthenticatedApp />
+    </PartyProvider>
   )
 }
 

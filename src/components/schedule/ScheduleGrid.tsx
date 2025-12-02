@@ -1,10 +1,12 @@
 import { useAuth } from '../../hooks/useAuth'
 import { useAvailability } from '../../hooks/useAvailability'
+import { useParty } from '../../hooks/useParty'
 import { formatDateDisplay, getDayOfWeek } from '../../lib/dates'
 import type { PartyMember } from '../../lib/schemas'
 
 export function ScheduleGrid() {
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
+  const { currentParty, isAdmin, loading: partyLoading } = useParty()
   const {
     dates,
     partyMembers,
@@ -14,12 +16,18 @@ export function ScheduleGrid() {
     setAvailability,
     clearAvailability,
     countAvailable,
-  } = useAvailability()
+  } = useAvailability({ partyId: currentParty?.id ?? null })
 
-  const isAdmin = profile?.is_admin ?? false
-
-  if (loading) {
+  if (partyLoading || loading) {
     return <div className="loading">Loading schedule...</div>
+  }
+
+  if (!currentParty) {
+    return (
+      <div className="no-party">
+        <p>No party selected. Create or join a party to get started.</p>
+      </div>
+    )
   }
 
   if (error) {
