@@ -18,11 +18,24 @@ export function ScheduleGrid() {
     countAvailable,
   } = useAvailability({ partyId: currentParty?.id ?? null })
 
+  console.log('[ScheduleGrid] render:', {
+    hasUser: !!user,
+    partyLoading,
+    availabilityLoading: loading,
+    currentPartyId: currentParty?.id,
+    currentPartyName: currentParty?.name,
+    error,
+    datesCount: dates.length,
+    membersCount: partyMembers.length
+  })
+
   if (partyLoading || loading) {
+    console.log('[ScheduleGrid] showing loading state:', { partyLoading, availabilityLoading: loading })
     return <div className="loading">Loading schedule...</div>
   }
 
   if (!currentParty) {
+    console.log('[ScheduleGrid] no current party, showing no-party message')
     return (
       <div className="no-party">
         <p>No party selected. Create or join a party to get started.</p>
@@ -31,8 +44,11 @@ export function ScheduleGrid() {
   }
 
   if (error) {
+    console.log('[ScheduleGrid] showing error:', error)
     return <div className="error">Error: {error}</div>
   }
+
+  console.log('[ScheduleGrid] rendering full grid')
 
   const handleToggle = (memberId: string, date: string) => {
     const member = partyMembers.find((m) => m.id === memberId)

@@ -37,16 +37,22 @@ interface StoredSession {
 function getStoredSession(): { user: User; session: Session } | null {
   try {
     const stored = localStorage.getItem('nat20-auth')
+    console.log('[Auth] getStoredSession: localStorage nat20-auth exists?', !!stored)
     if (!stored) return null
 
     const parsed = JSON.parse(stored) as StoredSession
-    if (!parsed.user || !parsed.access_token) return null
+    if (!parsed.user || !parsed.access_token) {
+      console.log('[Auth] getStoredSession: invalid stored data (missing user or token)')
+      return null
+    }
 
     // Check if session is expired (with 60s buffer)
     const now = Math.floor(Date.now() / 1000)
     if (parsed.expires_at && parsed.expires_at < now + 60) {
+      console.log('[Auth] getStoredSession: session expired', { expires_at: parsed.expires_at, now })
       return null // Session expired, don't use it
     }
+    console.log('[Auth] getStoredSession: valid cached session found for user', parsed.user.email)
 
     // Reconstruct user and session objects
     const user: User = {
@@ -75,8 +81,10 @@ function getStoredSession(): { user: User; session: Session } | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
+    console.log('[Auth] AuthProvider: initializing state')
     const cached = getStoredSession()
     if (cached) {
+      console.log('[Auth] AuthProvider: using cached session', { userId: cached.user.id, email: cached.user.email })
       return {
         user: cached.user,
         profile: null, // Will be fetched in useEffect
@@ -84,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading: false, // No loading - we have a session
       }
     }
+    console.log('[Auth] AuthProvider: no cached session, starting fresh')
     return {
       user: null,
       profile: null,
@@ -93,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+    console.log('[Auth] fetchProfile: fetching for userId', userId)
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -100,30 +110,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single()
 
     if (error) {
-      console.error('Error fetching profile:', error)
+      console.error('[Auth] fetchProfile: ERROR', error)
       return null
     }
 
+    console.log('[Auth] fetchProfile: success', data)
     return parseProfile(data)
   }, [])
 
   useEffect(() => {
+    console.log('[Auth] useEffect: starting auth initialization')
+
     // If we have a cached user, fetch their profile immediately
     const cached = getStoredSession()
     if (cached) {
+      console.log('[Auth] useEffect: fetching profile for cached user')
       fetchProfile(cached.user.id).then((profile) => {
+        console.log('[Auth] useEffect: cached user profile fetched', { hasProfile: !!profile })
         setState((s) => ({ ...s, profile }))
       })
     }
 
     // Validate/refresh session in background
     // This handles token refresh and ensures session is still valid
+    console.log('[Auth] useEffect: calling supabase.auth.getSession()')
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('[Auth] useEffect: getSession returned', { hasSession: !!session, userId: session?.user?.id })
       const user = session?.user ?? null
       const profile = user ? await fetchProfile(user.id) : null
+      console.log('[Auth] useEffect: setting final auth state', { hasUser: !!user, hasProfile: !!profile })
       setState({ user, profile, session, loading: false })
     }).catch((err) => {
-      console.error('Error getting session:', err)
+      console.error('[Auth] useEffect: getSession ERROR', err)
       // On error, clear the invalid session
       setState({ user: null, profile: null, session: null, loading: false })
     })
@@ -131,7 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes (login, logout, token refresh)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] onAuthStateChange:', event, { hasSession: !!session, userId: session?.user?.id })
       const user = session?.user ?? null
       const profile = user ? await fetchProfile(user.id) : null
       setState({ user, profile, session, loading: false })

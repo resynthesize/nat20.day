@@ -21,6 +21,8 @@ interface UseAvailabilityOptions {
 }
 
 export function useAvailability({ partyId }: UseAvailabilityOptions) {
+  console.log('[Availability] useAvailability hook called with partyId:', partyId)
+
   const [state, setState] = useState<AvailabilityState>({
     dates: [],
     partyMembers: [],
@@ -33,8 +35,11 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
   const mutatingRef = useRef(false)
 
   const fetchData = useCallback(async (showLoading = true) => {
+    console.log('[Availability] fetchData: starting', { partyId, showLoading })
+
     // Don't fetch if no party is selected
     if (!partyId) {
+      console.log('[Availability] fetchData: no partyId, clearing state')
       setState({
         dates: [],
         partyMembers: [],
@@ -46,6 +51,7 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
     }
 
     if (showLoading) {
+      console.log('[Availability] fetchData: setting loading=true')
       setState((s) => ({ ...s, loading: true, error: null }))
     }
 
@@ -53,6 +59,7 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
       const dates = generateDates(8)
       const fromDate = dates[0]
       const toDate = dates[dates.length - 1]
+      console.log('[Availability] fetchData: querying supabase', { fromDate, toDate })
 
       const [membersResult, availabilityResult] = await Promise.all([
         supabase
@@ -90,6 +97,13 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
           .order('date'),
       ])
 
+      console.log('[Availability] fetchData: query results', {
+        membersError: membersResult.error,
+        membersCount: membersResult.data?.length,
+        availabilityError: availabilityResult.error,
+        availabilityCount: availabilityResult.data?.length
+      })
+
       if (membersResult.error) throw membersResult.error
       if (availabilityResult.error) throw availabilityResult.error
 
@@ -104,6 +118,12 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
         party_members: Array.isArray(item.party_members) ? item.party_members[0] : item.party_members,
       }))
 
+      console.log('[Availability] fetchData: setting final state', {
+        datesCount: dates.length,
+        membersCount: normalizedMembers.length,
+        availabilityCount: normalizedAvailability.length
+      })
+
       setState({
         dates,
         partyMembers: parsePartyMembers(normalizedMembers),
@@ -112,6 +132,7 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
         error: null,
       })
     } catch (err) {
+      console.error('[Availability] fetchData: ERROR', err)
       setState((s) => ({
         ...s,
         loading: false,
@@ -203,6 +224,7 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
 
   // Fetch data when partyId changes
   useEffect(() => {
+    console.log('[Availability] useEffect: partyId changed, calling fetchData', { partyId })
     fetchData()
   }, [fetchData, partyId])
 
