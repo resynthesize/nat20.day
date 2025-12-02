@@ -290,9 +290,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json(errorResponse('UNAUTHORIZED', authResult.error || 'Invalid token', 401))
   }
 
-  // Parse path
-  const pathSegments = req.query.path as string[] | undefined
-  const path = pathSegments?.join('/') || ''
+  // Parse path from URL (more reliable than req.query.path)
+  const url = new URL(req.url || '', `https://${req.headers.host}`)
+  const path = url.pathname.replace(/^\/api\/v1\/?/, '') // Remove /api/v1/ prefix
   const method = req.method || 'GET'
 
   // Match route
