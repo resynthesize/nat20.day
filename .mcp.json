@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nat20": {
+      "type": "http",
+      "url": "https://nat20.day/api/mcp"
+    }
+  }
+}

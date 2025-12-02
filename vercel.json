@@ -8,7 +8,7 @@
   "rewrites": [
     { "source": "/api/v1/:path*", "destination": "/api/v1" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/.well-known/oauth-protected-resource", "destination": "/api/.well-known/oauth-protected-resource" },
+    { "source": "/.well-known/oauth-protected-resource", "destination": "/api/oauth-metadata" },
     { "source": "/docs", "destination": "/docs/index.html" },
     { "source": "/((?!api/|docs|openapi\\.json|\\.well-known).*)", "destination": "/index.html" }
   ]
