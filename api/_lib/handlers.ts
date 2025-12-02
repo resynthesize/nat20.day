@@ -69,47 +69,58 @@ export const AuthenticationLive = Layer.effect(
         Effect.gen(function* () {
           // Unwrap the redacted token
           const token = Redacted.value(redactedToken)
-
-          // Validate nat20_ prefix
-          if (!token.startsWith("nat20_")) {
-            return yield* Effect.fail(
-              new Unauthorized({ message: "Invalid token format" })
-            )
-          }
-
-          const tokenHash = hashToken(token)
           const supabase = getServiceClient()
 
-          // Lookup token - map any DB error to Unauthorized (middleware can only fail with Unauthorized)
-          const { data, error } = yield* Effect.tryPromise({
-            try: () =>
-              supabase
-                .from("api_tokens")
-                .select("id, profile_id")
-                .eq("token_hash", tokenHash)
-                .single(),
-            catch: () => new Unauthorized({ message: "Authentication failed" }),
-          })
+          // Check if it's a nat20_ API token
+          if (token.startsWith("nat20_")) {
+            const tokenHash = hashToken(token)
 
-          if (error || !data) {
-            return yield* Effect.fail(
-              new Unauthorized({ message: "Invalid or revoked token" })
-            )
-          }
-
-          // Update last_used_at (fire and forget - ignore any errors)
-          Effect.runFork(
-            Effect.tryPromise({
+            // Lookup token - map any DB error to Unauthorized (middleware can only fail with Unauthorized)
+            const { data, error } = yield* Effect.tryPromise({
               try: () =>
                 supabase
                   .from("api_tokens")
-                  .update({ last_used_at: new Date().toISOString() })
-                  .eq("id", data.id),
-              catch: () => new Error("Ignored"),
-            }).pipe(Effect.ignore)
-          )
+                  .select("id, profile_id")
+                  .eq("token_hash", tokenHash)
+                  .single(),
+              catch: () => new Unauthorized({ message: "Authentication failed" }),
+            })
 
-          return { profileId: data.profile_id }
+            if (error || !data) {
+              return yield* Effect.fail(
+                new Unauthorized({ message: "Invalid or revoked token" })
+              )
+            }
+
+            // Update last_used_at (fire and forget - ignore any errors)
+            Effect.runFork(
+              Effect.tryPromise({
+                try: () =>
+                  supabase
+                    .from("api_tokens")
+                    .update({ last_used_at: new Date().toISOString() })
+                    .eq("id", data.id),
+                catch: () => new Error("Ignored"),
+              }).pipe(Effect.ignore)
+            )
+
+            return { profileId: data.profile_id }
+          }
+
+          // Otherwise, try to validate as Supabase JWT (for billing endpoints)
+          // This allows users to create parties before they have an API token
+          const { data: userData, error: userError } = yield* Effect.tryPromise({
+            try: () => supabase.auth.getUser(token),
+            catch: () => new Unauthorized({ message: "Invalid session token" }),
+          })
+
+          if (userError || !userData.user) {
+            return yield* Effect.fail(
+              new Unauthorized({ message: "Invalid or expired session" })
+            )
+          }
+
+          return { profileId: userData.user.id }
         }),
     })
   )
