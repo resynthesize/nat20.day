@@ -43,8 +43,8 @@ function AuthenticatedApp() {
     const checkoutStatus = searchParams.get('checkout')
     if (checkoutStatus === 'success') {
       setCheckoutMessage({ type: 'success', text: 'Party created successfully! Welcome to your new adventure.' })
-      // Refresh parties to show the new one
-      refreshParties()
+      // Refresh parties and select the newest one (the one just created)
+      refreshParties({ selectNewest: true })
       // Clean up the URL
       searchParams.delete('checkout')
       searchParams.delete('session_id')
