@@ -3,7 +3,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { DocsPage } from './pages/DocsPage'
 import { PartyProvider, useParty } from './hooks/useParty'
-import { LoginButton } from './components/auth/LoginButton'
+import { AuthTabs } from './components/auth/AuthTabs'
 import { ScheduleGrid } from './components/schedule/ScheduleGrid'
 import { ProfilePage } from './components/profile/ProfilePage'
 import { AdminPanel } from './components/admin/AdminPanel'
@@ -101,7 +101,7 @@ function AuthenticatedApp() {
 }
 
 function App() {
-  const { loading, signInWithGoogle, isAuthenticated } = useAuth()
+  const { loading, isAuthenticated } = useAuth()
   const location = useLocation()
 
   const [tagline] = useState(
@@ -129,7 +129,7 @@ function App() {
           <h1 className="title">nat20.day</h1>
           <p className="subtitle">D&D Session Scheduler</p>
           <p className="tagline">"{tagline}"</p>
-          <LoginButton onClick={signInWithGoogle} />
+          <AuthTabs />
         </div>
       </div>
     )

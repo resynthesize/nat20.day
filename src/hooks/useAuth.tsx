@@ -13,6 +13,8 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   signInWithGoogle: () => Promise<void>
+  signInWithDiscord: () => Promise<void>
+  signInWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
   isAuthenticated: boolean
@@ -90,9 +92,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     })
     if (error) {
-      console.error('Error signing in:', error.message)
+      console.error('Error signing in with Google:', error.message)
       throw error
     }
+  }, [])
+
+  const signInWithDiscord = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+    if (error) {
+      console.error('Error signing in with Discord:', error.message)
+      throw error
+    }
+  }, [])
+
+  const signInWithEmail = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    })
+    if (error) {
+      console.error('Error sending magic link:', error.message)
+      return { success: false, error: error.message }
+    }
+    return { success: true }
   }, [])
 
   const signOut = useCallback(async () => {
@@ -114,6 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     ...state,
     signInWithGoogle,
+    signInWithDiscord,
+    signInWithEmail,
     signOut,
     refreshProfile,
     isAuthenticated: !!state.user,
