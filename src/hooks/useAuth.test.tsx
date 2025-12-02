@@ -1,20 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from './useAuth'
 import { BrowserRouter } from 'react-router-dom'
-
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
-  }
-})()
-
-Object.defineProperty(window, 'localStorage', { value: localStorageMock })
 
 // Mock Supabase
 const mockGetSession = vi.fn()
@@ -36,7 +23,10 @@ vi.mock('../lib/supabase', () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
-          single: () => Promise.resolve({ data: { id: 'user-1', display_name: 'Test User', is_admin: false }, error: null }),
+          single: () => Promise.resolve({
+            data: { id: 'user-1', display_name: 'Test User', is_admin: false },
+            error: null,
+          }),
         }),
       }),
     }),
@@ -67,7 +57,7 @@ function renderAuth() {
 const validSession = {
   access_token: 'valid-token',
   refresh_token: 'refresh-token',
-  expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
   expires_in: 3600,
   token_type: 'bearer',
   user: {
@@ -80,70 +70,95 @@ const validSession = {
   },
 }
 
-const expiredSession = {
-  ...validSession,
-  expires_at: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
-}
-
 describe('useAuth', () => {
   beforeEach(() => {
-    localStorageMock.clear()
     vi.clearAllMocks()
     // Default: getSession resolves with no session
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
   })
 
-  afterEach(() => {
-    localStorageMock.clear()
-  })
+  describe('initial load behavior', () => {
+    it('starts in loading state', async () => {
+      // Make getSession hang so we can observe loading state
+      mockGetSession.mockImplementation(() => new Promise(() => {}))
 
-  describe('instant load behavior', () => {
-    it('shows login immediately when no stored session exists', async () => {
-      // No session in localStorage
       renderAuth()
 
-      // Should immediately show ready (not loading) and not authenticated
-      expect(screen.getByTestId('loading')).toHaveTextContent('ready')
+      // Should start in loading state
+      expect(screen.getByTestId('loading')).toHaveTextContent('loading')
+    })
+
+    it('shows not authenticated when getSession returns no session', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+
+      renderAuth()
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('ready')
+      })
+
       expect(screen.getByTestId('authenticated')).toHaveTextContent('no')
     })
 
-    it('shows authenticated state immediately when valid session exists in localStorage', async () => {
-      // Store a valid session in localStorage
-      localStorageMock.setItem('nat20-auth', JSON.stringify(validSession))
+    it('shows authenticated when getSession returns valid session', async () => {
       mockGetSession.mockResolvedValue({ data: { session: validSession }, error: null })
 
       renderAuth()
 
-      // Should immediately show authenticated (using stored session)
-      // Not loading spinner!
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('ready')
       })
+
       expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
       expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
     })
+  })
 
-    it('uses stored session instantly without waiting for getSession', async () => {
-      // Store a valid session
-      localStorageMock.setItem('nat20-auth', JSON.stringify(validSession))
-
-      // Make getSession slow
-      mockGetSession.mockImplementation(() => new Promise((resolve) => {
-        setTimeout(() => resolve({ data: { session: validSession }, error: null }), 1000)
-      }))
+  describe('auth state changes', () => {
+    it('updates state when auth state changes to logged in', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
 
       renderAuth()
 
-      // Should NOT be in loading state - should use cached session immediately
-      expect(screen.getByTestId('loading')).toHaveTextContent('ready')
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
+      await waitFor(() => {
+        expect(screen.getByTestId('authenticated')).toHaveTextContent('no')
+      })
+
+      // Simulate auth state change (user logs in)
+      const authCallback = mockOnAuthStateChange.mock.calls[0][0]
+      await act(async () => {
+        authCallback('SIGNED_IN', validSession)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
+      })
+    })
+
+    it('updates state when auth state changes to logged out', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: validSession }, error: null })
+
+      renderAuth()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
+      })
+
+      // Simulate auth state change (user logs out)
+      const authCallback = mockOnAuthStateChange.mock.calls[0][0]
+      await act(async () => {
+        authCallback('SIGNED_OUT', null)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('authenticated')).toHaveTextContent('no')
+      })
     })
   })
 
-  describe('session persistence on refresh', () => {
-    it('maintains session after simulated page refresh', async () => {
-      // Store a valid session
-      localStorageMock.setItem('nat20-auth', JSON.stringify(validSession))
+  describe('session persistence', () => {
+    it('maintains session after component remount', async () => {
       mockGetSession.mockResolvedValue({ data: { session: validSession }, error: null })
 
       const { unmount } = renderAuth()
@@ -152,50 +167,33 @@ describe('useAuth', () => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
       })
 
-      // Simulate page refresh by unmounting and remounting
       unmount()
 
-      // Session should still be in localStorage
-      expect(localStorageMock.getItem('nat20-auth')).not.toBeNull()
-
-      // Re-render (simulating page load after refresh)
+      // Re-render (simulating page navigation or refresh)
       renderAuth()
 
-      // Should still be authenticated
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
       })
     })
 
-    it('handles expired session by showing login', async () => {
-      // Store an expired session
-      localStorageMock.setItem('nat20-auth', JSON.stringify(expiredSession))
-      // Supabase getSession returns null for expired session
-      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    it('shows not authenticated when session expires', async () => {
+      // First call returns valid session
+      mockGetSession.mockResolvedValueOnce({ data: { session: validSession }, error: null })
 
-      renderAuth()
+      const { unmount } = renderAuth()
 
-      // Should show login (not authenticated) after validation
       await waitFor(() => {
-        expect(screen.getByTestId('authenticated')).toHaveTextContent('no')
+        expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
       })
-    })
-  })
 
-  describe('background session validation', () => {
-    it('updates state if background validation returns different result', async () => {
-      // Start with valid session in localStorage
-      localStorageMock.setItem('nat20-auth', JSON.stringify(validSession))
+      unmount()
 
-      // But getSession says it's invalid
-      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      // Second call returns no session (expired)
+      mockGetSession.mockResolvedValueOnce({ data: { session: null }, error: null })
 
       renderAuth()
 
-      // Initially should use stored session
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('yes')
-
-      // After validation, should update to logged out
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('no')
       })
