@@ -1,40 +1,28 @@
 /**
  * API Documentation Page
  *
- * Renders the OpenAPI spec using Scalar for beautiful, interactive docs.
- * Accessible publicly at /docs without authentication.
+ * This component is a fallback for local dev. In production, Vercel serves
+ * public/docs/index.html directly via rewrites, bypassing React entirely.
+ *
+ * The static HTML uses Scalar CDN which avoids React Router conflicts
+ * since Scalar uses hash-based navigation internally.
  */
 
-import { ApiReferenceReact } from '@scalar/api-reference-react'
-import '@scalar/api-reference-react/style.css'
-
 export function DocsPage() {
+  // In local dev, render an iframe pointing to the static file
+  // In production, Vercel serves the static file directly (this never renders)
   return (
-    <div
+    <iframe
+      src="/docs/index.html"
+      title="API Documentation"
       style={{
-        height: '100vh',
         width: '100vw',
+        height: '100vh',
+        border: 'none',
         position: 'fixed',
         top: 0,
         left: 0,
       }}
-    >
-      <ApiReferenceReact
-        configuration={{
-          url: '/openapi.json',
-          theme: 'saturn',
-          darkMode: true,
-          metaData: {
-            title: 'nat20.day API Documentation',
-          },
-          hideDownloadButton: false,
-          hideModels: false,
-          defaultHttpClient: {
-            targetKey: 'shell',
-            clientKey: 'curl',
-          },
-        }}
-      />
-    </div>
+    />
   )
 }
