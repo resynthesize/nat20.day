@@ -332,7 +332,7 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
           game_type: params.gameType,
           user_id: params.userId,
         },
-        expand: ["latest_invoice.payment_intent"],
+        expand: ["latest_invoice.payment_intent", "latest_invoice.payments.data.payment.payment_intent"],
       })
 
       // With default_incomplete, Stripe creates a PaymentIntent for collecting payment.
@@ -343,13 +343,38 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
         throw new Error("Invoice not expanded in subscription response")
       }
 
-      // payment_intent is expanded from string to full object due to expand parameter
-      const paymentIntent = (invoice as { payment_intent?: Stripe.PaymentIntent }).payment_intent
-      if (!paymentIntent?.client_secret) {
-        throw new Error("No payment intent created for subscription")
+      // Debug: log invoice structure to understand 2025 API response
+      console.log("Invoice structure:", JSON.stringify({
+        id: invoice.id,
+        status: invoice.status,
+        hasPaymentIntent: "payment_intent" in invoice,
+        paymentIntentValue: (invoice as Record<string, unknown>).payment_intent,
+        hasPayments: "payments" in invoice,
+        paymentsData: (invoice as Record<string, unknown>).payments,
+        confirmationSecret: invoice.confirmation_secret,
+      }, null, 2))
+
+      // Try multiple access patterns for the client_secret
+      // Pattern 1: Direct payment_intent on invoice (older API)
+      let clientSecret: string | undefined = (invoice as { payment_intent?: Stripe.PaymentIntent }).payment_intent?.client_secret
+
+      // Pattern 2: Through payments array (newer 2025 API)
+      if (!clientSecret && invoice.payments?.data?.[0]) {
+        const payment = invoice.payments.data[0].payment
+        const pi = payment?.payment_intent
+        if (typeof pi !== "string" && pi?.client_secret) {
+          clientSecret = pi.client_secret
+        }
       }
 
-      const clientSecret = paymentIntent.client_secret
+      // Pattern 3: confirmation_secret (finalized invoices)
+      if (!clientSecret && invoice.confirmation_secret?.client_secret) {
+        clientSecret = invoice.confirmation_secret.client_secret
+      }
+
+      if (!clientSecret) {
+        throw new Error("No payment intent created for subscription")
+      }
 
       return {
         subscriptionId: subscription.id,
