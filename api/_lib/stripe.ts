@@ -326,7 +326,8 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
         payment_behavior: "default_incomplete",
         payment_settings: {
           save_default_payment_method: "on_subscription",
-          payment_method_types: ["card", "link"],
+          // Payment methods controlled via Dashboard rules (no hardcoding needed)
+          // See: https://docs.stripe.com/payments/payment-method-rules
         },
         metadata: {
           party_name: params.partyName,
