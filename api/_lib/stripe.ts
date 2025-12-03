@@ -332,7 +332,7 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
           game_type: params.gameType,
           user_id: params.userId,
         },
-        expand: ["latest_invoice.payment_intent"],
+        expand: ["latest_invoice", "pending_setup_intent"],
       })
 
       // With default_incomplete, Stripe creates a PaymentIntent for collecting payment.
@@ -343,16 +343,24 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
         throw new Error("Invoice not expanded in subscription response")
       }
 
-      // Debug: log invoice structure to understand 2025 API response
+      // Debug: log subscription and invoice structure
       const invoiceAny = invoice as unknown as Record<string, unknown>
+      const subAny = subscription as unknown as Record<string, unknown>
+      console.log("Subscription structure:", JSON.stringify({
+        id: subscription.id,
+        status: subscription.status,
+        pendingSetupIntent: subAny.pending_setup_intent,
+        hasPendingSetupIntent: "pending_setup_intent" in subscription,
+      }, null, 2))
       console.log("Invoice structure:", JSON.stringify({
         id: invoice.id,
         status: invoice.status,
         hasPaymentIntent: "payment_intent" in invoice,
         paymentIntentValue: invoiceAny.payment_intent,
         hasPayments: "payments" in invoice,
-        paymentsData: invoiceAny.payments,
+        paymentsValue: invoiceAny.payments,
         confirmationSecret: invoice.confirmation_secret,
+        hostedInvoiceUrl: invoice.hosted_invoice_url,
       }, null, 2))
 
       // Try multiple access patterns for the client_secret
@@ -373,8 +381,16 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
         clientSecret = invoice.confirmation_secret.client_secret
       }
 
+      // Pattern 4: pending_setup_intent on subscription (for $0 first invoices or trials)
+      if (!clientSecret && subscription.pending_setup_intent) {
+        const setupIntent = subscription.pending_setup_intent
+        if (typeof setupIntent !== "string" && setupIntent.client_secret) {
+          clientSecret = setupIntent.client_secret
+        }
+      }
+
       if (!clientSecret) {
-        throw new Error("No payment intent created for subscription")
+        throw new Error("No payment intent created for subscription. Invoice status: " + invoice.status)
       }
 
       return {
