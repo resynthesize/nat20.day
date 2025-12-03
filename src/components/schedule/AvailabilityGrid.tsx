@@ -3,6 +3,7 @@
  * Used by both the main ScheduleGrid (with hooks) and DemoPage (with static data)
  */
 
+import { memo, useMemo, useCallback } from 'react'
 import { formatDateDisplay, getDayOfWeek } from '../../lib/dates'
 
 export interface GridMember {
@@ -29,7 +30,7 @@ interface AvailabilityGridProps {
   readOnly?: boolean
 }
 
-export function AvailabilityGrid({
+function AvailabilityGridComponent({
   members,
   dates,
   availability,
@@ -38,31 +39,52 @@ export function AvailabilityGrid({
   showAdminBadge,
   readOnly = false,
 }: AvailabilityGridProps) {
-  // Build availability lookup map
-  const availabilityMap = new Map<string, boolean>()
-  for (const a of availability) {
-    availabilityMap.set(`${a.memberId}-${a.date}`, a.available)
-  }
+  // Memoize the availability lookup map - only rebuilds when availability changes
+  const availabilityMap = useMemo(() => {
+    const map = new Map<string, boolean>()
+    for (const a of availability) {
+      map.set(`${a.memberId}-${a.date}`, a.available)
+    }
+    return map
+  }, [availability])
 
-  const getAvailability = (memberId: string, date: string) => {
-    const key = `${memberId}-${date}`
-    const value = availabilityMap.get(key)
-    return value !== undefined ? { available: value } : undefined
-  }
+  const getAvailability = useCallback(
+    (memberId: string, date: string) => {
+      const key = `${memberId}-${date}`
+      const value = availabilityMap.get(key)
+      return value !== undefined ? { available: value } : undefined
+    },
+    [availabilityMap]
+  )
 
-  const countAvailable = (date: string) => {
-    return members.filter((m) => availabilityMap.get(`${m.id}-${date}`) === true).length
-  }
+  // Memoize count calculations - these are O(N) and called for each date header
+  const availabilityCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const date of dates) {
+      const count = members.filter((m) => availabilityMap.get(`${m.id}-${date}`) === true).length
+      counts.set(date, count)
+    }
+    return counts
+  }, [dates, members, availabilityMap])
 
-  const isAllAvailable = (date: string) => {
-    return countAvailable(date) === members.length && members.length > 0
-  }
+  const countAvailable = useCallback(
+    (date: string) => availabilityCounts.get(date) ?? 0,
+    [availabilityCounts]
+  )
 
-  const handleToggle = (memberId: string, date: string) => {
-    if (readOnly || !onToggle) return
-    if (canEdit && !canEdit(memberId)) return
-    onToggle(memberId, date)
-  }
+  const isAllAvailable = useCallback(
+    (date: string) => countAvailable(date) === members.length && members.length > 0,
+    [countAvailable, members.length]
+  )
+
+  const handleToggle = useCallback(
+    (memberId: string, date: string) => {
+      if (readOnly || !onToggle) return
+      if (canEdit && !canEdit(memberId)) return
+      onToggle(memberId, date)
+    },
+    [readOnly, onToggle, canEdit]
+  )
 
   return (
     <div className="schedule-container">
@@ -165,3 +187,7 @@ export function AvailabilityGrid({
     </div>
   )
 }
+
+// Memoize the entire component - prevents re-renders when parent state changes
+// but grid props remain the same (shallow comparison)
+export const AvailabilityGrid = memo(AvailabilityGridComponent)

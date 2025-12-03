@@ -44,7 +44,6 @@ function storePartyId(partyId: string | null): void {
 
 export function PartyProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth()
-  console.log('[Party] PartyProvider render:', { isAuthenticated, userId: user?.id })
 
   const [state, setState] = useState<PartyState>({
     parties: [],
@@ -54,13 +53,8 @@ export function PartyProvider({ children }: { children: ReactNode }) {
   })
 
   const fetchParties = useCallback(async (): Promise<PartyWithAdmins[]> => {
-    console.log('[Party] fetchParties: starting', { hasUser: !!user })
-    if (!user) {
-      console.log('[Party] fetchParties: no user, returning empty array')
-      return []
-    }
+    if (!user) return []
 
-    console.log('[Party] fetchParties: querying supabase for parties')
     const { data, error } = await supabase
       .from('parties')
       .select(`
@@ -76,29 +70,21 @@ export function PartyProvider({ children }: { children: ReactNode }) {
       .eq('is_demo', false)  // Exclude demo parties from user's party list
       .order('name')
 
-    if (error) {
-      console.error('[Party] fetchParties: ERROR', error)
-      return []
-    }
+    if (error) return []
 
-    console.log('[Party] fetchParties: success', { count: data?.length, data })
     return parseParties(data)
   }, [user])
 
   const refreshParties = useCallback(async (options?: { selectNewest?: boolean }) => {
-    console.log('[Party] refreshParties: starting', { isAuthenticated, options })
     if (!isAuthenticated) {
-      console.log('[Party] refreshParties: not authenticated, clearing state')
       setState({ parties: [], currentParty: null, loading: false, error: null })
       return
     }
 
-    console.log('[Party] refreshParties: setting loading=true')
     setState((s) => ({ ...s, loading: true, error: null }))
 
     const parties = await fetchParties()
     const storedPartyId = getStoredPartyId()
-    console.log('[Party] refreshParties: fetched parties', { count: parties.length, storedPartyId })
 
     // Find the current party to select
     let currentParty: PartyWithAdmins | null = null
@@ -109,29 +95,20 @@ export function PartyProvider({ children }: { children: ReactNode }) {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0]
       storePartyId(currentParty.id)
-      console.log('[Party] refreshParties: selected newest party', currentParty.id)
     } else if (storedPartyId) {
       currentParty = parties.find((p) => p.id === storedPartyId) ?? null
-      console.log('[Party] refreshParties: found stored party?', !!currentParty)
     }
 
     if (!currentParty && parties.length > 0) {
       currentParty = parties[0]
       storePartyId(currentParty.id)
-      console.log('[Party] refreshParties: using first party', currentParty.id)
     }
 
-    console.log('[Party] refreshParties: setting final state', {
-      partiesCount: parties.length,
-      currentPartyId: currentParty?.id,
-      loading: false
-    })
     setState({ parties, currentParty, loading: false, error: null })
   }, [isAuthenticated, fetchParties])
 
   // Fetch parties when user changes
   useEffect(() => {
-    console.log('[Party] useEffect: triggering refreshParties')
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: fetch on mount
     refreshParties()
   }, [refreshParties])

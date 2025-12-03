@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useParty } from '../../hooks/useParty'
 import { useAuth } from '../../hooks/useAuth'
 import { parsePartyMembers, type PartyMember } from '../../lib/schemas'
+import { UpdatePaymentModal } from './UpdatePaymentModal'
 
 type TabType = 'members' | 'settings' | 'billing'
 
@@ -60,6 +61,10 @@ export function AdminPanel() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
   const [loadingSubscription, setLoadingSubscription] = useState(false)
   const [openingPortal, setOpeningPortal] = useState(false)
+  const [showUpdatePayment, setShowUpdatePayment] = useState(false)
+  const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null)
+  const [cancelingSubscription, setCancelingSubscription] = useState(false)
+  const [reactivatingSubscription, setReactivatingSubscription] = useState(false)
 
   // Redirect if not admin
   useEffect(() => {
@@ -371,6 +376,114 @@ export function AdminPanel() {
     }
   }
 
+  const handleUpdatePaymentMethod = async () => {
+    if (!currentParty) return
+
+    setError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('You must be logged in')
+        return
+      }
+
+      const response = await fetch('/api/v1/billing/setup-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ party_id: currentParty.id }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to create setup intent')
+      }
+
+      const { client_secret } = await response.json()
+      setSetupIntentSecret(client_secret)
+      setShowUpdatePayment(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update payment method')
+    }
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!currentParty) return
+    if (!confirm('Are you sure you want to cancel? Your party will remain active until the end of the billing period.')) {
+      return
+    }
+
+    setCancelingSubscription(true)
+    setError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('You must be logged in')
+        return
+      }
+
+      const response = await fetch('/api/v1/billing/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ party_id: currentParty.id }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to cancel subscription')
+      }
+
+      // Refresh subscription status
+      await fetchSubscription()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel subscription')
+    } finally {
+      setCancelingSubscription(false)
+    }
+  }
+
+  const handleReactivateSubscription = async () => {
+    if (!currentParty) return
+
+    setReactivatingSubscription(true)
+    setError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('You must be logged in')
+        return
+      }
+
+      const response = await fetch('/api/v1/billing/reactivate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ party_id: currentParty.id }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to reactivate subscription')
+      }
+
+      // Refresh subscription status
+      await fetchSubscription()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reactivate subscription')
+    } finally {
+      setReactivatingSubscription(false)
+    }
+  }
+
   const formatDate = (isoDate: string) => {
     return new Date(isoDate).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -670,17 +783,44 @@ export function AdminPanel() {
                         </div>
                       )}
 
-                      <button
-                        type="button"
-                        className="billing-portal-button"
-                        onClick={handleOpenBillingPortal}
-                        disabled={openingPortal}
-                      >
-                        {openingPortal ? 'Opening...' : 'Manage Subscription'}
-                      </button>
-                      <p className="billing-hint">
-                        Update payment method, view invoices, or cancel subscription.
-                      </p>
+                      <div className="billing-actions">
+                        <button
+                          type="button"
+                          className="billing-action-button"
+                          onClick={handleUpdatePaymentMethod}
+                        >
+                          Update Payment Method
+                        </button>
+
+                        {subscription.cancel_at_period_end ? (
+                          <button
+                            type="button"
+                            className="billing-action-button reactivate"
+                            onClick={handleReactivateSubscription}
+                            disabled={reactivatingSubscription}
+                          >
+                            {reactivatingSubscription ? 'Reactivating...' : 'Reactivate Subscription'}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="billing-action-button cancel"
+                            onClick={handleCancelSubscription}
+                            disabled={cancelingSubscription}
+                          >
+                            {cancelingSubscription ? 'Canceling...' : 'Cancel Subscription'}
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          className="billing-action-button secondary"
+                          onClick={handleOpenBillingPortal}
+                          disabled={openingPortal}
+                        >
+                          {openingPortal ? 'Opening...' : 'View Invoices'}
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -696,6 +836,16 @@ export function AdminPanel() {
           </div>
         )}
       </div>
+
+      <UpdatePaymentModal
+        isOpen={showUpdatePayment}
+        onClose={() => {
+          setShowUpdatePayment(false)
+          setSetupIntentSecret(null)
+        }}
+        clientSecret={setupIntentSecret}
+        onSuccess={fetchSubscription}
+      />
     </div>
   )
 }

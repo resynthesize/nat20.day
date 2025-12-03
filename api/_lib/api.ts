@@ -126,6 +126,12 @@ export class CheckoutSession extends Schema.Class<CheckoutSession>("CheckoutSess
   session_id: Schema.String.annotations({ description: "Stripe Checkout Session ID" }),
 }) {}
 
+/** Response from subscription creation for embedded payment */
+export class SubscriptionPaymentIntent extends Schema.Class<SubscriptionPaymentIntent>("SubscriptionPaymentIntent")({
+  client_secret: Schema.String.annotations({ description: "Client secret for Payment Element confirmation" }),
+  subscription_id: Schema.String.annotations({ description: "Stripe Subscription ID" }),
+}) {}
+
 /** Request body for creating a billing portal session */
 export class CreatePortalBody extends Schema.Class<CreatePortalBody>("CreatePortalBody")({
   party_id: Schema.String.annotations({ description: "Party ID to manage billing for" }),
@@ -134,6 +140,22 @@ export class CreatePortalBody extends Schema.Class<CreatePortalBody>("CreatePort
 /** Response from billing portal session creation */
 export class PortalSession extends Schema.Class<PortalSession>("PortalSession")({
   portal_url: Schema.String.annotations({ description: "URL to redirect user to Stripe Billing Portal" }),
+}) {}
+
+/** Response from customer session creation for embedded portal */
+export class CustomerSession extends Schema.Class<CustomerSession>("CustomerSession")({
+  client_secret: Schema.String.annotations({ description: "Client secret for embedded portal" }),
+}) {}
+
+/** Response from setup intent creation for updating payment method */
+export class SetupIntent extends Schema.Class<SetupIntent>("SetupIntent")({
+  client_secret: Schema.String.annotations({ description: "Client secret for Payment Element" }),
+}) {}
+
+/** Response from subscription cancellation */
+export class SubscriptionCanceled extends Schema.Class<SubscriptionCanceled>("SubscriptionCanceled")({
+  cancel_at_period_end: Schema.Boolean.annotations({ description: "Whether cancellation is scheduled" }),
+  current_period_end: Schema.String.annotations({ description: "When access expires" }),
 }) {}
 
 /** Query params for getting subscription */
@@ -285,6 +307,14 @@ const createCheckout = HttpApiEndpoint.post("createCheckout", "/billing/checkout
   .annotate(OpenApi.Summary, "Create checkout session")
   .annotate(OpenApi.Description, "Creates a Stripe Checkout session for a new party subscription. Redirect the user to the returned URL to complete payment.")
 
+const createSubscription = HttpApiEndpoint.post("createSubscription", "/billing/subscribe")
+  .setPayload(CreateCheckoutBody)
+  .addSuccess(SubscriptionPaymentIntent)
+  .addError(Unauthorized, { status: 401 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Create subscription for embedded payment")
+  .annotate(OpenApi.Description, "Creates a Stripe Subscription with incomplete payment status. Returns a client_secret for use with the embedded Payment Element.")
+
 const createPortal = HttpApiEndpoint.post("createPortal", "/billing/portal")
   .setPayload(CreatePortalBody)
   .addSuccess(PortalSession)
@@ -295,6 +325,16 @@ const createPortal = HttpApiEndpoint.post("createPortal", "/billing/portal")
   .annotate(OpenApi.Summary, "Create billing portal session")
   .annotate(OpenApi.Description, "Creates a Stripe Billing Portal session for managing an existing subscription. You must be an admin of the party.")
 
+const createCustomerSession = HttpApiEndpoint.post("createCustomerSession", "/billing/customer-session")
+  .setPayload(CreatePortalBody)
+  .addSuccess(CustomerSession)
+  .addError(Unauthorized, { status: 401 })
+  .addError(Forbidden, { status: 403 })
+  .addError(NotFound, { status: 404 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Create customer session for embedded portal")
+  .annotate(OpenApi.Description, "Creates a Stripe Customer Session for rendering the embedded billing portal. You must be an admin of the party.")
+
 const getSubscription = HttpApiEndpoint.get("getSubscription", "/billing/subscription")
   .setUrlParams(SubscriptionQueryParams)
   .addSuccess(Subscription)
@@ -303,6 +343,36 @@ const getSubscription = HttpApiEndpoint.get("getSubscription", "/billing/subscri
   .addError(NotFound, { status: 404 })
   .annotate(OpenApi.Summary, "Get subscription status")
   .annotate(OpenApi.Description, "Returns the subscription status for a party. You must be a member of the party.")
+
+const createSetupIntent = HttpApiEndpoint.post("createSetupIntent", "/billing/setup-intent")
+  .setPayload(CreatePortalBody)
+  .addSuccess(SetupIntent)
+  .addError(Unauthorized, { status: 401 })
+  .addError(Forbidden, { status: 403 })
+  .addError(NotFound, { status: 404 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Create setup intent for payment method update")
+  .annotate(OpenApi.Description, "Creates a Stripe SetupIntent for updating the payment method. Returns a client_secret for the Payment Element.")
+
+const cancelSubscription = HttpApiEndpoint.post("cancelSubscription", "/billing/cancel")
+  .setPayload(CreatePortalBody)
+  .addSuccess(SubscriptionCanceled)
+  .addError(Unauthorized, { status: 401 })
+  .addError(Forbidden, { status: 403 })
+  .addError(NotFound, { status: 404 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Cancel subscription")
+  .annotate(OpenApi.Description, "Schedules the subscription to cancel at the end of the current billing period.")
+
+const reactivateSubscription = HttpApiEndpoint.post("reactivateSubscription", "/billing/reactivate")
+  .setPayload(CreatePortalBody)
+  .addSuccess(SubscriptionCanceled)
+  .addError(Unauthorized, { status: 401 })
+  .addError(Forbidden, { status: 403 })
+  .addError(NotFound, { status: 404 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Reactivate subscription")
+  .annotate(OpenApi.Description, "Removes the scheduled cancellation so the subscription will renew.")
 
 // ============================================================================
 // API Groups
@@ -323,7 +393,12 @@ const availabilityGroup = HttpApiGroup.make("availability")
 
 const billingGroup = HttpApiGroup.make("billing")
   .add(createCheckout)
+  .add(createSubscription)
   .add(createPortal)
+  .add(createCustomerSession)
+  .add(createSetupIntent)
+  .add(cancelSubscription)
+  .add(reactivateSubscription)
   .add(getSubscription)
   .middleware(Authentication)
   .annotate(OpenApi.Title, "Billing")

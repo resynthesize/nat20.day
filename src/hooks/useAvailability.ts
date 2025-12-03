@@ -22,8 +22,6 @@ interface UseAvailabilityOptions {
 }
 
 export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions) {
-  console.log('[Availability] useAvailability hook called with partyId:', partyId)
-
   const [state, setState] = useState<AvailabilityState>({
     dates: [],
     partyMembers: [],
@@ -229,7 +227,7 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
     fetchData()
   }, [fetchData, partyId])
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates with incremental merging
   useEffect(() => {
     if (!partyId) return
 
@@ -238,11 +236,96 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'availability' },
-        () => {
+        (payload) => {
           // Skip refresh during local mutations to prevent flash
-          if (!mutatingRef.current) {
-            fetchData(false)
-          }
+          if (mutatingRef.current) return
+
+          // Incremental merge: update only the changed record instead of full refetch
+          const { eventType, new: newRecord, old: oldRecord } = payload
+
+          setState((s) => {
+            // Only process if this availability belongs to a member in our party
+            const memberId = (newRecord as { party_member_id?: string })?.party_member_id ||
+                             (oldRecord as { party_member_id?: string })?.party_member_id
+            const memberInParty = s.partyMembers.some((m) => m.id === memberId)
+            if (!memberInParty) return s
+
+            switch (eventType) {
+              case 'INSERT': {
+                const record = newRecord as {
+                  id: string
+                  party_member_id: string
+                  date: string
+                  available: boolean
+                  updated_at: string
+                }
+                // Check if date is within our displayed range
+                if (!s.dates.includes(record.date)) return s
+                // Avoid duplicates (might already exist from optimistic update)
+                const exists = s.availability.some(
+                  (a) => a.party_member_id === record.party_member_id && a.date === record.date
+                )
+                if (exists) {
+                  // Update existing record
+                  return {
+                    ...s,
+                    availability: s.availability.map((a) =>
+                      a.party_member_id === record.party_member_id && a.date === record.date
+                        ? { ...a, id: record.id, available: record.available, updated_at: record.updated_at }
+                        : a
+                    ),
+                  }
+                }
+                // Add new record
+                const member = s.partyMembers.find((m) => m.id === record.party_member_id)
+                return {
+                  ...s,
+                  availability: [
+                    ...s.availability,
+                    {
+                      id: record.id,
+                      party_member_id: record.party_member_id,
+                      date: record.date,
+                      available: record.available,
+                      updated_at: record.updated_at,
+                      party_members: { name: member?.name ?? '' },
+                    },
+                  ],
+                }
+              }
+
+              case 'UPDATE': {
+                const record = newRecord as {
+                  id: string
+                  party_member_id: string
+                  date: string
+                  available: boolean
+                  updated_at: string
+                }
+                return {
+                  ...s,
+                  availability: s.availability.map((a) =>
+                    a.party_member_id === record.party_member_id && a.date === record.date
+                      ? { ...a, available: record.available, updated_at: record.updated_at }
+                      : a
+                  ),
+                }
+              }
+
+              case 'DELETE': {
+                const record = oldRecord as { party_member_id: string; date: string }
+                return {
+                  ...s,
+                  availability: s.availability.filter(
+                    (a) => !(a.party_member_id === record.party_member_id && a.date === record.date)
+                  ),
+                }
+              }
+
+              default:
+                return s
+            }
+          })
         }
       )
       .subscribe()
@@ -250,7 +333,7 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [fetchData, partyId])
+  }, [partyId]) // Removed fetchData dependency - no longer needed for incremental updates
 
   const getAvailability = useCallback(
     (memberId: string, date: string) => {

@@ -6,7 +6,8 @@
  * it uses Stripe signature verification instead.
  *
  * Events handled:
- *   - checkout.session.completed: Create party + subscription after successful payment
+ *   - checkout.session.completed: Create party + subscription after hosted checkout payment
+ *   - invoice.paid: Create party + subscription after embedded payment (first invoice)
  *   - customer.subscription.updated: Update subscription status
  *   - customer.subscription.deleted: Mark subscription as canceled
  *   - invoice.payment_failed: Mark subscription as past_due
@@ -250,6 +251,139 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
 }
 
 /**
+ * Handle invoice.paid event for embedded payment flow
+ * Creates party and subscription when first invoice is paid
+ */
+async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
+  // Check if this is a subscription creation invoice (first payment)
+  // billing_reason can be: 'subscription_create', 'subscription_cycle', 'subscription_update', etc.
+  if (invoice.billing_reason !== 'subscription_create') {
+    console.log(`Skipping invoice.paid for billing_reason: ${invoice.billing_reason}`)
+    return
+  }
+
+  // Get subscription ID from the invoice
+  const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === 'string'
+    ? invoice.parent.subscription_details.subscription
+    : invoice.parent?.subscription_details?.subscription?.id
+
+  if (!subscriptionId) {
+    console.log("Invoice paid but no subscription attached")
+    return
+  }
+
+  const supabase = getServiceClient()
+  const stripe = getStripe()
+
+  // Check if we already created a party for this subscription (idempotency)
+  const { data: existingSub } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("stripe_subscription_id", subscriptionId)
+    .single()
+
+  if (existingSub) {
+    console.log(`Subscription ${subscriptionId} already exists, skipping party creation`)
+    return
+  }
+
+  // Fetch the full subscription to get metadata
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ['items.data'],
+  })
+
+  const metadata = subscription.metadata || {}
+  const partyName = metadata.party_name
+  const gameType = metadata.game_type || "dnd"
+  const userId = metadata.user_id
+
+  if (!partyName || !userId) {
+    console.error("Missing required metadata in subscription:", metadata)
+    throw new Error("Missing party_name or user_id in subscription metadata")
+  }
+
+  console.log(`Creating party "${partyName}" for user ${userId} via embedded payment`)
+
+  // Get current period from first subscription item
+  const firstItem = subscription.items.data[0]
+  const currentPeriodStart = firstItem?.current_period_start ?? subscription.created
+  const currentPeriodEnd = firstItem?.current_period_end ?? (subscription.created + 365 * 24 * 60 * 60)
+
+  // 1. Create the party
+  const { data: party, error: partyError } = await supabase
+    .from("parties")
+    .insert({
+      name: partyName,
+      game_type: gameType,
+    })
+    .select()
+    .single()
+
+  if (partyError || !party) {
+    console.error("Failed to create party:", partyError)
+    throw new Error(`Failed to create party: ${partyError?.message}`)
+  }
+
+  console.log(`Created party ${party.id}`)
+
+  // 2. Add creator as admin
+  const { error: adminError } = await supabase
+    .from("party_admins")
+    .insert({
+      party_id: party.id,
+      profile_id: userId,
+    })
+
+  if (adminError) {
+    console.error("Failed to add admin:", adminError)
+    await supabase.from("parties").delete().eq("id", party.id)
+    throw new Error(`Failed to add admin: ${adminError.message}`)
+  }
+
+  // 3. Get user details for party member record
+  const { data: authUser } = await supabase.auth.admin.getUserById(userId)
+  const userName = authUser.user?.user_metadata?.full_name || authUser.user?.email || "Unknown"
+  const userEmail = authUser.user?.email
+
+  // 4. Add creator as party member
+  const { error: memberError } = await supabase
+    .from("party_members")
+    .insert({
+      party_id: party.id,
+      name: userName,
+      email: userEmail,
+      profile_id: userId,
+    })
+
+  if (memberError) {
+    console.error("Failed to add member:", memberError)
+    await supabase.from("party_admins").delete().eq("party_id", party.id)
+    await supabase.from("parties").delete().eq("id", party.id)
+    throw new Error(`Failed to add member: ${memberError.message}`)
+  }
+
+  // 5. Create subscription record
+  const { error: subError } = await supabase
+    .from("subscriptions")
+    .insert({
+      party_id: party.id,
+      stripe_subscription_id: subscription.id,
+      stripe_customer_id: subscription.customer as string,
+      status: subscription.status === "active" ? "active" : "past_due",
+      current_period_start: new Date(currentPeriodStart * 1000).toISOString(),
+      current_period_end: new Date(currentPeriodEnd * 1000).toISOString(),
+      cancel_at_period_end: subscription.cancel_at_period_end,
+    })
+
+  if (subError) {
+    console.error("Failed to create subscription:", subError)
+    throw new Error(`Failed to create subscription record: ${subError.message}`)
+  }
+
+  console.log(`Successfully created party ${party.id} with subscription via embedded payment`)
+}
+
+/**
  * Vercel serverless function handler for Stripe webhooks
  */
 export default async function handler(
@@ -313,6 +447,12 @@ export default async function handler(
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice
         await handlePaymentFailed(invoice)
+        break
+      }
+
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice
+        await handleInvoicePaid(invoice)
         break
       }
 

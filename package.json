@@ -19,6 +19,8 @@
     "@effect/platform": "^0.93.6",
     "@effect/platform-node": "^0.103.0",
     "@scalar/api-reference-react": "^0.8.6",
+    "@stripe/react-stripe-js": "^5.4.1",
+    "@stripe/stripe-js": "^8.5.3",
     "@supabase/supabase-js": "^2.85.0",
     "date-fns": "^4.1.0",
     "effect": "^3.19.6",

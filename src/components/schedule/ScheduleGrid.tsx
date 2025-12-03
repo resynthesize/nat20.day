@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAvailability } from '../../hooks/useAvailability'
 import { useParty } from '../../hooks/useParty'
@@ -19,24 +20,72 @@ export function ScheduleGrid() {
     daysOfWeek: currentParty?.days_of_week,
   })
 
-  console.log('[ScheduleGrid] render:', {
-    hasUser: !!user,
-    partyLoading,
-    availabilityLoading: loading,
-    currentPartyId: currentParty?.id,
-    currentPartyName: currentParty?.name,
-    error,
-    datesCount: dates.length,
-    membersCount: partyMembers.length
-  })
+  // Memoize member transformation - only recalculates when partyMembers or user changes
+  const members: GridMember[] = useMemo(
+    () =>
+      partyMembers.map((member) => ({
+        id: member.id,
+        name: member.profiles?.display_name || member.name,
+        avatarUrl: member.profiles?.avatar_url,
+        isCurrentUser: member.profile_id === user?.id,
+        isLinked: member.profile_id !== null,
+      })),
+    [partyMembers, user?.id]
+  )
 
+  // Memoize availability array - O(N×M) operation, only rebuild when data changes
+  const availability: GridAvailability[] = useMemo(() => {
+    const result: GridAvailability[] = []
+    for (const member of partyMembers) {
+      for (const date of dates) {
+        const avail = getAvailability(member.id, date)
+        if (avail) {
+          result.push({
+            memberId: member.id,
+            date,
+            available: avail.available,
+          })
+        }
+      }
+    }
+    return result
+  }, [partyMembers, dates, getAvailability])
+
+  // Memoize toggle handler - stable reference for AvailabilityGrid
+  const handleToggle = useCallback(
+    (memberId: string, date: string) => {
+      const member = partyMembers.find((m) => m.id === memberId)
+      const isOwnRow = member?.profile_id === user?.id
+      if (!isAdmin && !isOwnRow) return
+
+      const current = getAvailability(memberId, date)
+      // Tri-state cycle: unset → available → unavailable → unset
+      if (!current) {
+        setAvailability(memberId, date, true)
+      } else if (current.available) {
+        setAvailability(memberId, date, false)
+      } else {
+        clearAvailability(memberId, date)
+      }
+    },
+    [partyMembers, user?.id, isAdmin, getAvailability, setAvailability, clearAvailability]
+  )
+
+  // Memoize canEdit - stable reference for AvailabilityGrid
+  const canEdit = useCallback(
+    (memberId: string) => {
+      const member = partyMembers.find((m) => m.id === memberId)
+      return isAdmin || member?.profile_id === user?.id
+    },
+    [partyMembers, isAdmin, user?.id]
+  )
+
+  // Early returns after all hooks
   if (partyLoading || loading) {
-    console.log('[ScheduleGrid] showing loading state:', { partyLoading, availabilityLoading: loading })
     return <div className="loading">Loading schedule...</div>
   }
 
   if (!currentParty) {
-    console.log('[ScheduleGrid] no current party, showing no-party message')
     return (
       <div className="no-party">
         <p>No party selected. Create or join a party to get started.</p>
@@ -45,55 +94,7 @@ export function ScheduleGrid() {
   }
 
   if (error) {
-    console.log('[ScheduleGrid] showing error:', error)
     return <div className="error">Error: {error}</div>
-  }
-
-  console.log('[ScheduleGrid] rendering full grid')
-
-  // Transform partyMembers to GridMember format
-  const members: GridMember[] = partyMembers.map(member => ({
-    id: member.id,
-    name: member.profiles?.display_name || member.name,
-    avatarUrl: member.profiles?.avatar_url,
-    isCurrentUser: member.profile_id === user?.id,
-    isLinked: member.profile_id !== null,
-  }))
-
-  // Build availability array from the hook's data
-  const availability: GridAvailability[] = []
-  for (const member of partyMembers) {
-    for (const date of dates) {
-      const avail = getAvailability(member.id, date)
-      if (avail) {
-        availability.push({
-          memberId: member.id,
-          date,
-          available: avail.available,
-        })
-      }
-    }
-  }
-
-  const handleToggle = (memberId: string, date: string) => {
-    const member = partyMembers.find((m) => m.id === memberId)
-    const isOwnRow = member?.profile_id === user?.id
-    if (!isAdmin && !isOwnRow) return
-
-    const current = getAvailability(memberId, date)
-    // Tri-state cycle: unset → available → unavailable → unset
-    if (!current) {
-      setAvailability(memberId, date, true)
-    } else if (current.available) {
-      setAvailability(memberId, date, false)
-    } else {
-      clearAvailability(memberId, date)
-    }
-  }
-
-  const canEdit = (memberId: string) => {
-    const member = partyMembers.find((m) => m.id === memberId)
-    return isAdmin || member?.profile_id === user?.id
   }
 
   return (

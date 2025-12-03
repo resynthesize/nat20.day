@@ -64,3 +64,10 @@ resource "vercel_project_environment_variable" "stripe_price_id" {
   value      = stripe_price.party_annual.id
   target     = ["production", "preview"]
 }
+
+resource "vercel_project_environment_variable" "stripe_publishable_key" {
+  project_id = vercel_project.main.id
+  key        = "VITE_STRIPE_PUBLISHABLE_KEY"
+  value      = var.stripe_publishable_key
+  target     = ["production", "preview"]
+}

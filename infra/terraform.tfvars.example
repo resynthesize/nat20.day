@@ -19,5 +19,6 @@ google_client_secret = ""
 
 # Stripe billing (https://dashboard.stripe.com/apikeys)
 # Note: Terraform creates the product, price, webhook endpoint, and portal config.
-# You only need to provide the secret key.
-stripe_secret_key = ""  # sk_live_xxx or sk_test_xxx
+# You only need to provide both keys.
+stripe_secret_key      = ""  # sk_live_xxx or sk_test_xxx
+stripe_publishable_key = ""  # pk_live_xxx or pk_test_xxx

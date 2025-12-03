@@ -15,9 +15,17 @@ import { Nat20Api } from "../api/_lib/api.js"
 // Generate OpenAPI spec from Effect API definition
 const spec = OpenApi.fromApi(Nat20Api)
 
+// Filter out billing endpoints from public docs
+const filteredPaths = Object.fromEntries(
+  Object.entries(spec.paths || {}).filter(
+    ([path]) => !path.startsWith("/billing")
+  )
+)
+
 // Add additional metadata
 const enrichedSpec = {
   ...spec,
+  paths: filteredPaths,
   info: {
     ...spec.info,
     title: "nat20.day API",

@@ -2290,6 +2290,75 @@ body {
   cursor: not-allowed;
 }
 
+/* Billing Actions (inline controls) */
+.billing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+.billing-action-button {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--gold);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.billing-action-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.billing-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.billing-action-button.secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.billing-action-button.secondary:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.billing-action-button.cancel {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.billing-action-button.cancel:hover:not(:disabled) {
+  border-color: var(--unavailable);
+  color: var(--unavailable);
+}
+
+.billing-action-button.reactivate {
+  background: var(--available);
+  color: var(--bg-primary);
+}
+
+.billing-action-button.reactivate:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* Update Payment Modal hint */
+.update-payment-hint {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
 .billing-hint {
   font-family: var(--font-body);
   font-size: 0.75rem;

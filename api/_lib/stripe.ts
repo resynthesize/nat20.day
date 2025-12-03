@@ -68,6 +68,13 @@ export interface CheckoutSessionParams {
   cancelUrl: string
 }
 
+export interface CreateSubscriptionParams {
+  partyName: string
+  gameType: string
+  userId: string
+  userEmail: string
+}
+
 /**
  * Create a Stripe Checkout Session for a new party subscription.
  */
@@ -113,6 +120,7 @@ export const createCheckoutSession = (params: CheckoutSessionParams) =>
 
 /**
  * Create a Stripe Customer Portal session for subscription management.
+ * (Legacy - redirects to hosted portal)
  */
 export const createPortalSession = (customerId: string, returnUrl: string) =>
   Effect.tryPromise({
@@ -132,6 +140,31 @@ export const createPortalSession = (customerId: string, returnUrl: string) =>
   })
 
 /**
+ * Create a Stripe Customer Session for embedded portal.
+ * Returns a client_secret for rendering the embedded customer portal.
+ */
+export const createCustomerSession = (customerId: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const stripe = getStripeClient()
+      return await stripe.customerSessions.create({
+        customer: customerId,
+        components: {
+          pricing_table: { enabled: false },
+          payment_element: { enabled: true },
+          buy_button: { enabled: false },
+        },
+      })
+    },
+    catch: (error) => {
+      console.error("Stripe customer session creation failed:", error)
+      return new BillingError({
+        message: error instanceof Error ? error.message : "Failed to create customer session",
+      })
+    },
+  })
+
+/**
  * Retrieve a Stripe Subscription by ID.
  */
 export const getSubscription = (subscriptionId: string) =>
@@ -144,6 +177,66 @@ export const getSubscription = (subscriptionId: string) =>
       console.error("Stripe subscription retrieval failed:", error)
       return new BillingError({
         message: error instanceof Error ? error.message : "Failed to retrieve subscription",
+      })
+    },
+  })
+
+/**
+ * Create a SetupIntent for updating payment method.
+ * Returns a client_secret for the Payment Element.
+ */
+export const createSetupIntent = (customerId: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const stripe = getStripeClient()
+      return await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        usage: "off_session",
+      })
+    },
+    catch: (error) => {
+      console.error("Stripe SetupIntent creation failed:", error)
+      return new BillingError({
+        message: error instanceof Error ? error.message : "Failed to create setup intent",
+      })
+    },
+  })
+
+/**
+ * Cancel a subscription at period end.
+ */
+export const cancelSubscriptionAtPeriodEnd = (subscriptionId: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const stripe = getStripeClient()
+      return await stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      })
+    },
+    catch: (error) => {
+      console.error("Stripe subscription cancellation failed:", error)
+      return new BillingError({
+        message: error instanceof Error ? error.message : "Failed to cancel subscription",
+      })
+    },
+  })
+
+/**
+ * Reactivate a subscription that was set to cancel at period end.
+ */
+export const reactivateSubscription = (subscriptionId: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const stripe = getStripeClient()
+      return await stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: false,
+      })
+    },
+    catch: (error) => {
+      console.error("Stripe subscription reactivation failed:", error)
+      return new BillingError({
+        message: error instanceof Error ? error.message : "Failed to reactivate subscription",
       })
     },
   })
@@ -182,6 +275,84 @@ export const constructWebhookEvent = (
       console.error("Stripe webhook verification failed:", error)
       return new BillingError({
         message: error instanceof Error ? error.message : "Webhook signature verification failed",
+      })
+    },
+  })
+
+export interface SubscriptionWithClientSecret {
+  subscriptionId: string
+  clientSecret: string
+  customerId: string
+}
+
+/**
+ * Create a Stripe Subscription with incomplete payment status.
+ * This returns a client_secret for the frontend to use with Payment Element.
+ *
+ * Flow:
+ * 1. Create or find customer by email
+ * 2. Create subscription with payment_behavior: 'default_incomplete'
+ * 3. Return client_secret from the subscription's first invoice payment intent
+ */
+export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionParams) =>
+  Effect.tryPromise({
+    try: async () => {
+      const stripe = getStripeClient()
+      const priceId = getStripePriceId()
+
+      // First, check if customer exists or create new one
+      const existingCustomers = await stripe.customers.list({
+        email: params.userEmail,
+        limit: 1,
+      })
+
+      let customer: Stripe.Customer
+      if (existingCustomers.data.length > 0) {
+        customer = existingCustomers.data[0]
+      } else {
+        customer = await stripe.customers.create({
+          email: params.userEmail,
+          metadata: {
+            user_id: params.userId,
+          },
+        })
+      }
+
+      // Create subscription with incomplete payment - this allows us to
+      // collect payment details via embedded Payment Element
+      const subscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{ price: priceId }],
+        payment_behavior: "default_incomplete",
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+        },
+        metadata: {
+          party_name: params.partyName,
+          game_type: params.gameType,
+          user_id: params.userId,
+        },
+        expand: ["latest_invoice.payment_intent"],
+      })
+
+      // Extract client_secret from the expanded payment intent
+      const invoice = subscription.latest_invoice as Stripe.Invoice
+      const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent
+
+      if (!paymentIntent?.client_secret) {
+        throw new Error("No payment intent created for subscription")
+      }
+
+      return {
+        subscriptionId: subscription.id,
+        clientSecret: paymentIntent.client_secret,
+        customerId: customer.id,
+      } satisfies SubscriptionWithClientSecret
+    },
+    catch: (error) => {
+      console.error("Stripe subscription creation failed:", error)
+      return new BillingError({
+        message: error instanceof Error ? error.message : "Failed to create subscription",
       })
     },
   })

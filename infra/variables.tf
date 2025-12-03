@@ -72,3 +72,8 @@ variable "stripe_secret_key" {
   type        = string
   sensitive   = true
 }
+
+variable "stripe_publishable_key" {
+  description = "Stripe publishable API key (pk_live_... or pk_test_...)"
+  type        = string
+}

@@ -46,7 +46,7 @@ resource "stripe_webhook_endpoint" "main" {
     "customer.subscription.updated",
     "customer.subscription.deleted",
     "invoice.payment_failed",
-    "invoice.payment_succeeded",
+    "invoice.paid",
   ]
 
   description = "nat20.day subscription webhook"

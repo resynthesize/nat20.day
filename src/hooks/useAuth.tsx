@@ -32,19 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
-    console.log('[Auth] fetchProfile: fetching for userId', userId)
+    // Select only needed columns instead of * for reduced payload
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, display_name, avatar_url, created_at')
       .eq('id', userId)
       .single()
 
     if (error) {
-      console.error('[Auth] fetchProfile: ERROR', error)
+      console.error('[Auth] fetchProfile error:', error.message)
       return null
     }
 
-    console.log('[Auth] fetchProfile: success', data)
     return parseProfile(data)
   }, [])
 
@@ -69,11 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, user, session, loading: false }))
 
       if (user) {
-        setTimeout(() => {
-          fetchProfile(user.id).then((profile) => {
-            setState((s) => ({ ...s, profile }))
-          })
-        }, 0)
+        // Fetch profile immediately - no need for setTimeout deferral
+        fetchProfile(user.id).then((profile) => {
+          setState((s) => ({ ...s, profile }))
+        })
       } else {
         setState((s) => ({ ...s, profile: null }))
       }
