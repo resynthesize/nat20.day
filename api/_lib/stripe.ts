@@ -344,19 +344,20 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
       }
 
       // Debug: log invoice structure to understand 2025 API response
+      const invoiceAny = invoice as unknown as Record<string, unknown>
       console.log("Invoice structure:", JSON.stringify({
         id: invoice.id,
         status: invoice.status,
         hasPaymentIntent: "payment_intent" in invoice,
-        paymentIntentValue: (invoice as Record<string, unknown>).payment_intent,
+        paymentIntentValue: invoiceAny.payment_intent,
         hasPayments: "payments" in invoice,
-        paymentsData: (invoice as Record<string, unknown>).payments,
+        paymentsData: invoiceAny.payments,
         confirmationSecret: invoice.confirmation_secret,
       }, null, 2))
 
       // Try multiple access patterns for the client_secret
       // Pattern 1: Direct payment_intent on invoice (older API)
-      let clientSecret: string | undefined = (invoice as { payment_intent?: Stripe.PaymentIntent }).payment_intent?.client_secret
+      let clientSecret: string | undefined = (invoice as unknown as { payment_intent?: Stripe.PaymentIntent }).payment_intent?.client_secret ?? undefined
 
       // Pattern 2: Through payments array (newer 2025 API)
       if (!clientSecret && invoice.payments?.data?.[0]) {

@@ -9,7 +9,7 @@
     "build": "tsx scripts/generate-openapi.ts && tsc -b && vite build",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",

@@ -13,7 +13,9 @@
       "Bash(git -C /Users/brandon/src/nat20.day show 3121b3a:api/v1.ts)",
       "WebFetch(domain:effect-ts.github.io)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:supabase.com)"
+      "WebFetch(domain:supabase.com)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
