@@ -6,10 +6,15 @@
   position: relative;
 }
 
-.party-selector.loading {
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  color: var(--text-muted);
+/* Skeleton loading state */
+.party-selector-button--skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+
+.party-selector-button--skeleton .party-name {
+  display: flex;
+  align-items: center;
 }
 
 .party-selector-button {

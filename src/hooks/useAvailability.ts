@@ -105,13 +105,22 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
         party_members: Array.isArray(item.party_members) ? item.party_members[0] : item.party_members,
       }))
 
+      const parsedMembers = parsePartyMembers(normalizedMembers)
+
       setState({
         dates,
-        partyMembers: parsePartyMembers(normalizedMembers),
+        partyMembers: parsedMembers,
         availability: parseAvailabilityWithMembers(normalizedAvailability),
         loading: false,
         error: null,
       })
+
+      // Persist member count for skeleton loading state
+      try {
+        localStorage.setItem('nat20-last-member-count', String(parsedMembers.length))
+      } catch {
+        // localStorage may not be available
+      }
     } catch (err) {
       setState((s) => ({
         ...s,

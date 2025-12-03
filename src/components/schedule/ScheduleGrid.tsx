@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAvailability } from '../../hooks/useAvailability'
 import { useParty } from '../../hooks/useParty'
 import { AvailabilityGrid, type GridMember, type GridAvailability } from './AvailabilityGrid'
+import { ScheduleGridSkeleton } from './ScheduleGridSkeleton'
 
 export function ScheduleGrid() {
   const { user } = useAuth()
@@ -82,7 +83,7 @@ export function ScheduleGrid() {
 
   // Early returns after all hooks
   if (partyLoading || loading) {
-    return <div className="loading">Loading schedule...</div>
+    return <ScheduleGridSkeleton />
   }
 
   if (!currentParty) {

@@ -1,0 +1,48 @@
+/* ============================================= */
+/* Skeleton Loading Components                   */
+/* ============================================= */
+
+/* Base skeleton styling */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+/* Shimmer animation overlay - gold tint for D&D theme */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(196, 146, 80, 0.08) 20%,
+    rgba(196, 146, 80, 0.12) 50%,
+    rgba(196, 146, 80, 0.08) 80%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Circle variant (avatars) */
+.skeleton--circle {
+  border-radius: 50%;
+}
+
+/* Text variant (inline text placeholders) */
+.skeleton--text {
+  height: 0.875em;
+  border-radius: 2px;
+}
