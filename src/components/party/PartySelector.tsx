@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParty } from '../../hooks/useParty'
-import { SkeletonText } from '../ui/skeleton'
+import { SkeletonBox } from '../ui/skeleton'
 
 interface PartySelectorProps {
   onCreateParty: () => void
@@ -25,14 +25,11 @@ export function PartySelector({ onCreateParty }: PartySelectorProps) {
 
   if (loading) {
     return (
-      <div className="party-selector">
-        <div className="party-selector-button party-selector-button--skeleton">
-          <span className="party-name">
-            <SkeletonText width={100} />
-          </span>
-          <span className="party-selector-arrow">▼</span>
-        </div>
-      </div>
+      <SkeletonBox
+        width={140}
+        height={34}
+        style={{ borderRadius: 'var(--radius-sm)' }}
+      />
     )
   }
 

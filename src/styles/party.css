@@ -6,17 +6,6 @@
   position: relative;
 }
 
-/* Skeleton loading state */
-.party-selector-button--skeleton {
-  cursor: default;
-  pointer-events: none;
-}
-
-.party-selector-button--skeleton .party-name {
-  display: flex;
-  align-items: center;
-}
-
 .party-selector-button {
   display: flex;
   align-items: center;
