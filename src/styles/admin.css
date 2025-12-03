@@ -1,0 +1,586 @@
+/* ============================================= */
+/* Admin Panel Styles */
+/* ============================================= */
+
+.admin-panel {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.admin-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.admin-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: var(--spacing-md) 0 0;
+}
+
+.admin-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: var(--spacing-xs);
+}
+
+.admin-error {
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background: var(--unavailable-bg);
+  border: 1px solid var(--unavailable);
+  border-radius: var(--radius-sm);
+  color: var(--unavailable);
+  font-size: 0.875rem;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.admin-tab {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.admin-tab:hover {
+  color: var(--text-primary);
+}
+
+.admin-tab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+.admin-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+/* Add Member Form */
+.add-member-form {
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.add-member-form h3,
+.members-list h3,
+.settings-form h3,
+.admin-list h3 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md);
+}
+
+.form-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.form-input {
+  flex: 1;
+  min-width: 150px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--gold);
+}
+
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background: var(--accent-red);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.form-button:hover:not(:disabled) {
+  background: var(--accent-red-hover);
+}
+
+.form-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--spacing-sm);
+}
+
+/* Members List */
+.member-item,
+.admin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.member-item:last-child,
+.admin-item:last-child {
+  border-bottom: none;
+}
+
+.member-info,
+.admin-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+  flex: 1;
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  object-fit: cover;
+}
+
+.member-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.member-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.member-name,
+.admin-name {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.member-email {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.member-admin-badge {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: var(--gold);
+  background: rgba(196, 146, 80, 0.15);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.member-pending {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.member-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.action-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-button.promote {
+  color: var(--available);
+  background: transparent;
+  border-color: var(--available);
+}
+
+.action-button.promote:hover {
+  background: rgba(72, 187, 120, 0.1);
+}
+
+.action-button.demote {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.action-button.demote:hover {
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+.action-button.remove {
+  color: var(--unavailable);
+  background: transparent;
+  border-color: var(--unavailable);
+}
+
+.action-button.remove:hover {
+  background: rgba(229, 62, 62, 0.1);
+}
+
+/* Settings Tab */
+.settings-form {
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Days of Week Selector */
+.days-settings {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.days-settings h3 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.days-selector {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-md) 0;
+  flex-wrap: wrap;
+}
+
+.day-toggle {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.875rem;
+  min-width: 3rem;
+  text-align: center;
+}
+
+.day-toggle:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.day-toggle.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.day-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-list {
+  margin-top: var(--spacing-lg);
+}
+
+/* Billing Tab Styles */
+.billing-tab {
+  padding: var(--spacing-md) 0;
+}
+
+.subscription-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+.subscription-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.subscription-header h3 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subscription-status {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.subscription-active {
+  color: var(--available);
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.subscription-past_due {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.subscription-canceled,
+.subscription-expired {
+  color: var(--unavailable);
+  background: rgba(239, 83, 80, 0.1);
+}
+
+.subscription-info {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.subscription-details {
+  display: flex;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+}
+
+.subscription-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-value {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.subscription-warning {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.billing-portal-button {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bg-primary);
+  background: var(--gold);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.billing-portal-button:hover:not(:disabled) {
+  background: var(--gold-hover);
+}
+
+.billing-portal-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Billing Actions (inline controls) */
+.billing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+.billing-action-button {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--gold);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.billing-action-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.billing-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.billing-action-button.secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.billing-action-button.secondary:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.billing-action-button.cancel {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.billing-action-button.cancel:hover:not(:disabled) {
+  border-color: var(--unavailable);
+  color: var(--unavailable);
+}
+
+.billing-action-button.reactivate {
+  background: var(--available);
+  color: var(--bg-primary);
+}
+
+.billing-action-button.reactivate:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.billing-hint {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: var(--spacing-sm) 0 0;
+}
+
+.no-subscription {
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.no-subscription p {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-input {
+    min-width: 100%;
+  }
+
+  .member-actions {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .action-button {
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-content {
+    padding: var(--spacing-md);
+  }
+
+  .member-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .member-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+}

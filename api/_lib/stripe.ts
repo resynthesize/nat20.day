@@ -343,54 +343,27 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
         throw new Error("Invoice not expanded in subscription response")
       }
 
-      // Debug: log subscription and invoice structure
-      const invoiceAny = invoice as unknown as Record<string, unknown>
-      const subAny = subscription as unknown as Record<string, unknown>
-      console.log("Subscription structure:", JSON.stringify({
-        id: subscription.id,
-        status: subscription.status,
-        pendingSetupIntent: subAny.pending_setup_intent,
-        hasPendingSetupIntent: "pending_setup_intent" in subscription,
-      }, null, 2))
-      console.log("Invoice structure:", JSON.stringify({
-        id: invoice.id,
-        status: invoice.status,
-        hasPaymentIntent: "payment_intent" in invoice,
-        paymentIntentValue: invoiceAny.payment_intent,
-        hasPayments: "payments" in invoice,
-        paymentsValue: invoiceAny.payments,
-        confirmationSecret: invoice.confirmation_secret,
-        hostedInvoiceUrl: invoice.hosted_invoice_url,
-      }, null, 2))
+      // In 2025 Stripe API, PaymentIntent is accessed via invoicePayments endpoint
+      // 1. List invoice payments to get the PaymentIntent ID
+      // 2. Retrieve the PaymentIntent to get the client_secret
+      const invoicePayments = await stripe.invoicePayments.list({ invoice: invoice.id })
+      const firstPayment = invoicePayments.data[0]
 
-      // Try multiple access patterns for the client_secret
-      // Pattern 1: Direct payment_intent on invoice (older API)
-      let clientSecret: string | undefined = (invoice as unknown as { payment_intent?: Stripe.PaymentIntent }).payment_intent?.client_secret ?? undefined
-
-      // Pattern 2: Through payments array (newer 2025 API)
-      if (!clientSecret && invoice.payments?.data?.[0]) {
-        const payment = invoice.payments.data[0].payment
-        const pi = payment?.payment_intent
-        if (typeof pi !== "string" && pi?.client_secret) {
-          clientSecret = pi.client_secret
-        }
+      if (!firstPayment?.payment?.payment_intent) {
+        throw new Error("No payment found for invoice")
       }
 
-      // Pattern 3: confirmation_secret (finalized invoices)
-      if (!clientSecret && invoice.confirmation_secret?.client_secret) {
-        clientSecret = invoice.confirmation_secret.client_secret
+      const paymentIntentId = firstPayment.payment.payment_intent
+      if (typeof paymentIntentId !== "string") {
+        throw new Error("PaymentIntent already expanded but missing ID")
       }
 
-      // Pattern 4: pending_setup_intent on subscription (for $0 first invoices or trials)
-      if (!clientSecret && subscription.pending_setup_intent) {
-        const setupIntent = subscription.pending_setup_intent
-        if (typeof setupIntent !== "string" && setupIntent.client_secret) {
-          clientSecret = setupIntent.client_secret
-        }
-      }
+      // Retrieve full PaymentIntent to get client_secret
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+      const clientSecret = paymentIntent.client_secret
 
       if (!clientSecret) {
-        throw new Error("No payment intent created for subscription. Invoice status: " + invoice.status)
+        throw new Error("PaymentIntent has no client_secret")
       }
 
       return {

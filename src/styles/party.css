@@ -1,0 +1,153 @@
+/* ============================================= */
+/* Party Selector Styles */
+/* ============================================= */
+
+.party-selector {
+  position: relative;
+}
+
+.party-selector.loading {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.party-selector-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.party-selector-button:hover {
+  background: var(--bg-elevated);
+  border-color: var(--text-secondary);
+}
+
+.party-selector-button.create {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.party-selector-button.create:hover {
+  background: rgba(196, 146, 80, 0.1);
+}
+
+.party-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.party-selector-arrow {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.party-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: var(--spacing-xs);
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.party-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.party-option:hover {
+  background: var(--bg-elevated);
+}
+
+.party-option.selected {
+  background: rgba(196, 146, 80, 0.1);
+  color: var(--gold);
+}
+
+.party-option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.party-check {
+  color: var(--gold);
+  font-size: 0.75rem;
+}
+
+.party-dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: var(--spacing-xs) 0;
+}
+
+.party-option.create-option {
+  color: var(--gold);
+}
+
+/* Admin Link in Header */
+.admin-link {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--gold);
+  text-decoration: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.admin-link:hover {
+  background: rgba(196, 146, 80, 0.1);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .party-name {
+    max-width: 150px;
+  }
+
+  .admin-link {
+    font-size: 0.75rem;
+    padding: var(--spacing-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .party-selector-button {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.75rem;
+  }
+
+  .party-name {
+    max-width: 100px;
+  }
+}

@@ -13,7 +13,7 @@ import { ProfilePage } from './components/profile/ProfilePage'
 import { AdminPanel } from './components/admin/AdminPanel'
 import { PartySelector } from './components/party/PartySelector'
 import { CreatePartyModal } from './components/party/CreatePartyModal'
-import './App.css'
+import './styles/index.css'
 
 const taglines = [
   "Herding cats, but the cats have schedules.",

@@ -1,0 +1,246 @@
+/* ============================================= */
+/* Authentication Styles */
+/* ============================================= */
+
+/* Login Screen */
+.login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+
+.login-container {
+  text-align: center;
+  padding: var(--spacing-xl);
+  max-width: 400px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--gold-light);
+  margin-bottom: var(--spacing-xs);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tagline {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-xl);
+  font-style: italic;
+}
+
+/* Auth Tabs */
+.auth-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
+  max-width: 320px;
+}
+
+.auth-tabs__oauth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.auth-tabs__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.auth-tabs__divider::before,
+.auth-tabs__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+/* OAuth Button */
+.oauth-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 12px 24px;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.oauth-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.oauth-button__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.oauth-button--google {
+  background: white;
+  color: #1f1f1f;
+}
+
+.oauth-button--google:hover:not(:disabled) {
+  background: #f8f8f8;
+  border-color: #dadce0;
+}
+
+.oauth-button--discord {
+  background: #5865F2;
+  color: white;
+  border-color: #5865F2;
+}
+
+.oauth-button--discord:hover:not(:disabled) {
+  background: #4752c4;
+  border-color: #4752c4;
+}
+
+/* Email Auth */
+.email-auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.email-auth__input {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.email-auth__input:focus {
+  border-color: var(--gold);
+}
+
+.email-auth__input::placeholder {
+  color: var(--text-muted);
+}
+
+.email-auth__button {
+  width: 100%;
+  padding: 12px 24px;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background: var(--accent-red);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.email-auth__button:hover:not(:disabled) {
+  background: var(--accent-red-hover);
+}
+
+.email-auth__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.email-auth__error {
+  margin: 0;
+  padding: var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--unavailable);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.email-auth--sent {
+  text-align: center;
+}
+
+.email-auth__success {
+  margin: 0 0 var(--spacing-md);
+  padding: var(--spacing-md);
+  font-size: 0.875rem;
+  color: var(--available);
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.email-auth__retry {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.email-auth__retry:hover {
+  color: var(--text-primary);
+}
+
+/* Login back link */
+.login-back-link {
+  margin-top: var(--spacing-lg);
+}
+
+.login-back-link a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.login-back-link a:hover {
+  color: var(--text-secondary);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 1.5rem;
+    letter-spacing: 0.08em;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+  }
+}

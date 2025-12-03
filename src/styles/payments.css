@@ -1,0 +1,349 @@
+/* ============================================= */
+/* Modal & Payment Styles */
+/* ============================================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-md);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  max-width: 450px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+.modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-form {
+  padding: var(--spacing-lg);
+}
+
+.modal-error {
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background: var(--unavailable-bg);
+  border: 1px solid var(--unavailable);
+  border-radius: var(--radius-sm);
+  color: var(--unavailable);
+  font-size: 0.875rem;
+}
+
+.modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.modal-label span {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.modal-input {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.modal-input:focus {
+  border-color: var(--gold);
+}
+
+.modal-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-hint {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-lg);
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.modal-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-button.secondary {
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+.modal-button.secondary:hover:not(:disabled) {
+  background: var(--bg-elevated);
+}
+
+.modal-button.primary {
+  color: white;
+  background: var(--accent-red);
+}
+
+.modal-button.primary:hover:not(:disabled) {
+  background: var(--accent-red-hover);
+}
+
+.modal-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Game Type Selector */
+.game-type-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.game-type-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--spacing-sm) var(--spacing-xs);
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.game-type-option:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+.game-type-option.selected {
+  border-color: var(--gold);
+  background: rgba(196, 146, 80, 0.1);
+}
+
+.game-type-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.game-type-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.game-type-option.selected .game-type-label {
+  color: var(--gold);
+}
+
+.game-type-description {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* Modal Pricing Display */
+.modal-pricing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--spacing-md);
+  background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-md);
+  text-align: center;
+}
+
+.modal-price {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.modal-price-note {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Larger modal for payment form */
+.modal-content--payment {
+  max-width: 480px;
+}
+
+/* Payment Summary (shown above payment form) */
+.payment-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.payment-summary-party {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.payment-summary-amount {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+/* Payment Form Styles */
+.payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.payment-element-container {
+  min-height: 200px;
+}
+
+.payment-form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+/* Payment Success State */
+.payment-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+}
+
+.payment-success-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--available-bg);
+  border: 2px solid var(--available);
+  border-radius: 50%;
+  font-size: 2rem;
+  color: var(--available);
+  margin-bottom: var(--spacing-lg);
+}
+
+.payment-success h3 {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  color: var(--gold-light);
+  margin-bottom: var(--spacing-sm);
+}
+
+.payment-success p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.payment-success-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Update Payment Modal hint */
+.update-payment-hint {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .modal-content {
+    margin: var(--spacing-sm);
+  }
+
+  .modal-header,
+  .modal-form {
+    padding: var(--spacing-md);
+  }
+}
