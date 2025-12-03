@@ -15,7 +15,21 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:supabase.com)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git -C /Users/brandon/src/nat20.day worktree list)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git push)",
+      "Bash(git worktree:*)",
+      "Bash(git branch:*)",
+      "Bash(git -C /Users/brandon/src/nat20.day branch:*)",
+      "Bash(git -C /Users/brandon/src/nat20.day log --oneline -10)",
+      "Bash(git -C /Users/brandon/src/nat20.day show a0aa6c8 --stat)",
+      "Bash(git -C /Users/brandon/src/nat20.day add:*)",
+      "Bash(git -C /Users/brandon/src/nat20.day commit -m \"$(cat <<''EOF''\nMake party dates styling theme-aware\n\n- Add accentPrimaryBg to theme system for semi-transparent backgrounds\n- Update schedule.css to use theme variables instead of hardcoded gold\n- Party dates, admin badge, and current-user row now adapt to MTG/VTM themes\n- Use color-mix() for subtle opacity variations\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git -C /Users/brandon/src/nat20.day push)"
     ],
     "deny": [],
     "ask": []

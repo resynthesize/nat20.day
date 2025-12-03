@@ -28,6 +28,7 @@ export const vtmTheme: Theme = {
     accentPrimary: '#8b0000',
     accentPrimaryHover: '#a50000',
     accentPrimaryLight: '#d4a5a5',
+    accentPrimaryBg: 'rgba(139, 0, 0, 0.15)',
 
     // Gothic gold accents - Victorian elegance
     accentSecondary: '#c9a227',

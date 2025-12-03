@@ -43,6 +43,7 @@ function applyThemeToDOM(theme: Theme): void {
   root.style.setProperty('--accent-primary', theme.colors.accentPrimary)
   root.style.setProperty('--accent-primary-hover', theme.colors.accentPrimaryHover)
   root.style.setProperty('--accent-primary-light', theme.colors.accentPrimaryLight)
+  root.style.setProperty('--accent-primary-bg', theme.colors.accentPrimaryBg)
   root.style.setProperty('--accent-secondary', theme.colors.accentSecondary)
   root.style.setProperty('--accent-secondary-hover', theme.colors.accentSecondaryHover)
 

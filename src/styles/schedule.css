@@ -214,23 +214,23 @@
   color: var(--available);
 }
 
-/* Party Date - All party members available (gold "NAT 20" highlight) */
+/* Party Date - All party members available (themed highlight) */
 .date-header.all-available {
-  background: rgba(196, 146, 80, 0.2);
-  border-bottom: 2px solid var(--gold) !important;
+  background: var(--accent-primary-bg);
+  border-bottom: 2px solid var(--accent-primary) !important;
 }
 
 .date-header.all-available .day-of-week {
-  color: var(--gold-light);
+  color: var(--accent-primary-light);
 }
 
 .date-header.all-available .date-display {
-  color: var(--gold-light);
+  color: var(--accent-primary-light);
   font-weight: 600;
 }
 
 .date-header.all-available .available-count {
-  color: var(--gold);
+  color: var(--accent-primary);
   font-weight: 700;
 }
 
@@ -246,7 +246,7 @@
 
 /* Column highlight when all available */
 .availability-cell.all-available-column.available {
-  background: rgba(196, 146, 80, 0.2) !important;
+  background: var(--accent-primary-bg) !important;
 }
 
 /* Player Rows */
@@ -267,11 +267,11 @@
 }
 
 .player-row.current-user > * {
-  background: rgba(196, 146, 80, 0.08);
+  background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
 }
 
 .player-row.current-user:hover > * {
-  background: rgba(196, 146, 80, 0.12);
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
 }
 
 .player-info {
@@ -407,8 +407,8 @@
   gap: var(--spacing-sm);
   margin-top: var(--spacing-lg);
   padding: var(--spacing-md);
-  background: rgba(196, 146, 80, 0.1);
-  border: 1px solid var(--gold);
+  background: var(--accent-primary-bg);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
 }
 
@@ -516,9 +516,9 @@
   margin-bottom: var(--spacing-md);
   font-family: var(--font-body);
   font-size: 0.75rem;
-  color: var(--gold);
-  background: rgba(196, 146, 80, 0.15);
-  border: 1px solid var(--gold);
+  color: var(--accent-primary);
+  background: var(--accent-primary-bg);
+  border: 1px solid var(--accent-primary);
   border-radius: var(--radius-sm);
 }
 

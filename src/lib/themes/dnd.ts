@@ -27,6 +27,7 @@ export const dndTheme: Theme = {
     accentPrimary: '#c49250',
     accentPrimaryHover: '#d4a660',
     accentPrimaryLight: '#f0dcb4',
+    accentPrimaryBg: 'rgba(196, 146, 80, 0.15)',
 
     // Red accents - Action and combat
     accentSecondary: '#c53030',

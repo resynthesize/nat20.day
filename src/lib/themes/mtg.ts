@@ -28,6 +28,7 @@ export const mtgTheme: Theme = {
     accentPrimary: '#9b7ed9',
     accentPrimaryHover: '#b094e8',
     accentPrimaryLight: '#d4c4f0',
+    accentPrimaryBg: 'rgba(155, 126, 217, 0.15)',
 
     // Blue accents - Strategic, controlled
     accentSecondary: '#3d82c6',

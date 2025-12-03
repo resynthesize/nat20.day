@@ -19,6 +19,7 @@ export interface ThemeColors {
   accentPrimary: string // Main accent (gold for D&D, purple for MTG, crimson for VTM)
   accentPrimaryHover: string
   accentPrimaryLight: string
+  accentPrimaryBg: string // Semi-transparent for backgrounds (party dates, highlights)
   accentSecondary: string // Secondary action color
   accentSecondaryHover: string
 
