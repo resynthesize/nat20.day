@@ -6,6 +6,9 @@ export interface GeneratedToken {
   prefix: string   // First 8 chars for identification
 }
 
+// Token prefix constant - used for validation across handlers
+export const TOKEN_PREFIX = 'nat20_'
+
 // Base62 alphabet (alphanumeric, no confusing chars)
 const BASE62 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 

@@ -1,221 +1,37 @@
 /**
- * nat20.day API Handler Implementation
+ * Availability Handlers
  *
- * This file implements all API endpoints using Effect HttpApiBuilder.
- * Authentication is handled via middleware that validates nat20_ tokens.
+ * Handles party availability CRUD operations.
  */
 
 import { HttpApiBuilder } from "@effect/platform"
-import { Effect, Layer, Redacted } from "effect"
+import { Effect, Layer } from "effect"
 import {
   Nat20Api,
-  Profile,
-  Party,
   PartyMember,
   Availability,
   PartyAvailability,
   AvailabilitySet,
   AvailabilityDeleted,
-  Unauthorized,
   Forbidden,
   NotFound,
   InternalError,
   CurrentUser,
-  Authentication,
-} from "./api.js"
-import { getServiceClient } from "./supabase.js"
-import { hashToken } from "./crypto.js"
-
-// Re-export for use by other modules
-export { CurrentUser, Authentication }
-
-/**
- * Stub layer for CurrentUser - satisfies type checker at composition time.
- * At runtime, the Authentication middleware provides the actual user.
- */
-export const CurrentUserStub = Layer.succeed(CurrentUser, { profileId: "" })
-
-// ============================================================================
-// Authentication Middleware Implementation
-// ============================================================================
-
-/** Authentication implementation layer */
-export const AuthenticationLive = Layer.effect(
-  Authentication,
-  Effect.succeed(
-    Authentication.of({
-      bearer: (redactedToken) =>
-        Effect.gen(function* () {
-          console.log("[Auth] Middleware invoked!")
-          // Unwrap the redacted token
-          const token = Redacted.value(redactedToken)
-          console.log("[Auth] Token prefix:", token.substring(0, 10) + "...")
-          const supabase = getServiceClient()
-
-          // Check if it's a nat20_ API token
-          if (token.startsWith("nat20_")) {
-            console.log("[Auth] Token is nat20_ API token")
-            const tokenHash = hashToken(token)
-
-            // Lookup token - map any DB error to Unauthorized (middleware can only fail with Unauthorized)
-            const { data, error } = yield* Effect.tryPromise({
-              try: () =>
-                supabase
-                  .from("api_tokens")
-                  .select("id, profile_id")
-                  .eq("token_hash", tokenHash)
-                  .single(),
-              catch: () => new Unauthorized({ message: "Authentication failed" }),
-            })
-
-            if (error || !data) {
-              return yield* Effect.fail(
-                new Unauthorized({ message: "Invalid or revoked token" })
-              )
-            }
-
-            // Update last_used_at (fire and forget - ignore any errors)
-            Effect.runFork(
-              Effect.tryPromise({
-                try: () =>
-                  supabase
-                    .from("api_tokens")
-                    .update({ last_used_at: new Date().toISOString() })
-                    .eq("id", data.id),
-                catch: () => new Error("Ignored"),
-              }).pipe(Effect.ignore)
-            )
-
-            console.log("[Auth] API token validated, profile_id:", data.profile_id)
-            return { profileId: data.profile_id }
-          }
-
-          // Otherwise, try to validate as Supabase JWT (for billing endpoints)
-          // This allows users to create parties before they have an API token
-          console.log("[Auth] Validating Supabase JWT...")
-          const { data: userData, error: userError } = yield* Effect.tryPromise({
-            try: () => supabase.auth.getUser(token),
-            catch: (e) => {
-              console.error("[Auth] getUser threw:", e)
-              return new Unauthorized({ message: "Invalid session token" })
-            },
-          })
-
-          console.log("[Auth] getUser result:", { userData, userError })
-
-          if (userError || !userData.user) {
-            console.error("[Auth] JWT validation failed:", userError)
-            return yield* Effect.fail(
-              new Unauthorized({ message: "Invalid or expired session" })
-            )
-          }
-
-          console.log("[Auth] JWT validated, user ID:", userData.user.id)
-          return { profileId: userData.user.id }
-        }),
-    })
-  )
-)
-
-// ============================================================================
-// Supabase Helper
-// ============================================================================
+} from "../api.js"
+import { getServiceClient } from "../supabase.js"
+import { AuthenticationLive, CurrentUserStub } from "./auth.js"
 
 const supabase = () => getServiceClient()
 
-// ============================================================================
-// User Handlers
-// ============================================================================
-
-const UserHandlers = HttpApiBuilder.group(Nat20Api, "user", (handlers) =>
-  handlers
-    // GET /me - Get current user profile
-    .handle("getMe", () =>
-      Effect.gen(function* () {
-        const user = yield* CurrentUser
-        const db = supabase()
-
-        const { data, error } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("profiles")
-              .select("id, display_name, avatar_url, created_at")
-              .eq("id", user.profileId)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (error || !data) {
-          // Profile missing for authenticated user is an internal data inconsistency
-          return yield* Effect.fail(new InternalError({ message: "Profile not found" }))
-        }
-
-        return new Profile({
-          id: data.id,
-          display_name: data.display_name,
-          avatar_url: data.avatar_url,
-          created_at: data.created_at,
-        })
-      })
-    )
-
-    // GET /parties - List user's parties
-    .handle("getParties", () =>
-      Effect.gen(function* () {
-        const user = yield* CurrentUser
-        const db = supabase()
-
-        // Get parties where user is a member
-        const { data: memberData, error: memberError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("party_members")
-              .select("party_id")
-              .eq("profile_id", user.profileId),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (memberError) {
-          return yield* Effect.fail(new InternalError({ message: "Failed to fetch parties" }))
-        }
-
-        const partyIds = memberData.map((m) => m.party_id)
-
-        if (partyIds.length === 0) {
-          return []
-        }
-
-        const { data: parties, error: partiesError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("parties")
-              .select("id, name, created_at")
-              .in("id", partyIds)
-              .order("name"),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (partiesError) {
-          return yield* Effect.fail(new InternalError({ message: "Failed to fetch parties" }))
-        }
-
-        return parties.map(
-          (p) =>
-            new Party({
-              id: p.id,
-              name: p.name,
-              created_at: p.created_at,
-            })
-        )
-      })
-    )
-).pipe(Layer.provide([AuthenticationLive, CurrentUserStub]))
-
-// ============================================================================
-// Availability Handlers
-// ============================================================================
-
-const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (handlers) =>
+/**
+ * Availability Handlers Group
+ *
+ * Endpoints:
+ *   GET    /parties/:partyId/availability  - Get party availability
+ *   PUT    /availability/:memberId/:date   - Set availability
+ *   DELETE /availability/:memberId/:date   - Clear availability
+ */
+export const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (handlers) =>
   handlers
     // GET /parties/:partyId/availability
     .handle("getPartyAvailability", ({ path, urlParams }) =>
@@ -438,10 +254,3 @@ const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability", (han
       })
     )
 ).pipe(Layer.provide([AuthenticationLive, CurrentUserStub]))
-
-// ============================================================================
-// Combined API Layer
-// ============================================================================
-
-// Note: BillingHandlers is imported and merged in api/v1.ts to avoid circular deps
-export const Nat20ApiLive = Layer.mergeAll(UserHandlers, AvailabilityHandlers)

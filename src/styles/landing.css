@@ -64,7 +64,7 @@
 
 /* Hero Section */
 .hero {
-  padding: 6rem var(--spacing-xl);
+  padding: 4rem var(--spacing-xl) 3rem;
   text-align: center;
   background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
 }
@@ -174,7 +174,7 @@
 
 /* Features Section */
 .features {
-  padding: 5rem var(--spacing-xl);
+  padding: 3rem var(--spacing-xl) 4rem;
   background: var(--bg-secondary);
 }
 
@@ -564,7 +564,7 @@
   }
 
   .hero {
-    padding: 3rem var(--spacing-md);
+    padding: 2.5rem var(--spacing-md) 2rem;
   }
 
   .hero-title {
@@ -580,7 +580,7 @@
   }
 
   .features {
-    padding: 3rem var(--spacing-md);
+    padding: 2rem var(--spacing-md) 3rem;
   }
 
   .features-grid {

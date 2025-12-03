@@ -21,8 +21,8 @@
 import { HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
 import { Layer } from "effect"
 import type { VercelRequest, VercelResponse } from "@vercel/node"
-import { Nat20ApiLive } from "./_lib/handlers.js"
-import { BillingHandlers } from "./_lib/billing-handlers.js"
+import { Nat20ApiLive } from "./_lib/handlers/index.js"
+import { BillingHandlers } from "./_lib/billing/index.js"
 import { Nat20Api } from "./_lib/api.js"
 
 // Merge all handler layers

@@ -16,13 +16,10 @@ import {
   SetupIntent,
   SubscriptionCanceled,
   Subscription,
-  Unauthorized,
-  Forbidden,
   NotFound,
-  BillingError,
   InternalError,
-} from "./api.js"
-import { getServiceClient } from "./supabase.js"
+} from "../api.js"
+import { getServiceClient } from "../supabase.js"
 import {
   createCheckoutSession,
   createPortalSession,
@@ -32,7 +29,13 @@ import {
   reactivateSubscription,
   createSubscriptionWithPaymentIntent,
 } from "./stripe.js"
-import { CurrentUser, AuthenticationLive, CurrentUserStub } from "./handlers.js"
+import { CurrentUser, AuthenticationLive, CurrentUserStub } from "../handlers/index.js"
+import {
+  requirePartyAdmin,
+  requirePartyMember,
+  getPartySubscription,
+  getUserEmail,
+} from "../helpers.js"
 
 // ============================================================================
 // Supabase Helper
@@ -67,24 +70,15 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
           return yield* Effect.fail(new InternalError({ message: "Profile not found" }))
         }
 
-        // Get user email from auth.users via RPC or service client
-        // For now, we'll require the email to be passed or fetched differently
-        // Since we have the user's profileId, we can get their email from auth
-        const { data: authUser, error: authError } = yield* Effect.tryPromise({
-          try: () => db.auth.admin.getUserById(user.profileId),
-          catch: () => new InternalError({ message: "Failed to get user details" }),
-        })
-
-        if (authError || !authUser.user?.email) {
-          return yield* Effect.fail(new InternalError({ message: "User email not found" }))
-        }
+        // Get user email from auth
+        const email = yield* getUserEmail(db, user.profileId)
 
         // Create Stripe Checkout session
         const session = yield* createCheckoutSession({
           partyName: payload.party_name,
           gameType: payload.game_type,
           userId: user.profileId,
-          userEmail: authUser.user.email,
+          userEmail: email,
           successUrl: `${process.env.VITE_SUPABASE_URL ? "https://nat20.day" : "http://localhost:5173"}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${process.env.VITE_SUPABASE_URL ? "https://nat20.day" : "http://localhost:5173"}/app?checkout=canceled`,
         })
@@ -118,21 +112,14 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         }
 
         // Get user email from auth
-        const { data: authUser, error: authError } = yield* Effect.tryPromise({
-          try: () => db.auth.admin.getUserById(user.profileId),
-          catch: () => new InternalError({ message: "Failed to get user details" }),
-        })
-
-        if (authError || !authUser.user?.email) {
-          return yield* Effect.fail(new InternalError({ message: "User email not found" }))
-        }
+        const email = yield* getUserEmail(db, user.profileId)
 
         // Create Stripe Subscription with incomplete payment
         const result = yield* createSubscriptionWithPaymentIntent({
           partyName: payload.party_name,
           gameType: payload.game_type,
           userId: user.profileId,
-          userEmail: authUser.user.email,
+          userEmail: email,
         })
 
         return new SubscriptionPaymentIntent({
@@ -149,39 +136,14 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         const db = supabase()
 
         // Verify user is an admin of this party
-        const { data: adminCheck, error: adminError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("party_admins")
-              .select("profile_id")
-              .eq("party_id", payload.party_id)
-              .eq("profile_id", user.profileId)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (adminError || !adminCheck) {
-          return yield* Effect.fail(new Forbidden({ message: "Must be party admin to manage billing" }))
-        }
+        yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const { data: subscription, error: subError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("subscriptions")
-              .select("stripe_customer_id")
-              .eq("party_id", payload.party_id)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (subError || !subscription) {
-          return yield* Effect.fail(new NotFound({ message: "No subscription found for this party" }))
-        }
+        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_customer_id")
 
         // Create Stripe Billing Portal session
         const returnUrl = `${process.env.VITE_SUPABASE_URL ? "https://nat20.day" : "http://localhost:5173"}/app/admin`
-        const session = yield* createPortalSession(subscription.stripe_customer_id, returnUrl)
+        const session = yield* createPortalSession(subscription.stripe_customer_id as string, returnUrl)
 
         return new PortalSession({
           portal_url: session.url,
@@ -196,38 +158,13 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         const db = supabase()
 
         // Verify user is an admin of this party
-        const { data: adminCheck, error: adminError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("party_admins")
-              .select("profile_id")
-              .eq("party_id", payload.party_id)
-              .eq("profile_id", user.profileId)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (adminError || !adminCheck) {
-          return yield* Effect.fail(new Forbidden({ message: "Must be party admin to manage billing" }))
-        }
+        yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const { data: subscription, error: subError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("subscriptions")
-              .select("stripe_customer_id")
-              .eq("party_id", payload.party_id)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (subError || !subscription) {
-          return yield* Effect.fail(new NotFound({ message: "No subscription found for this party" }))
-        }
+        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_customer_id")
 
         // Create Stripe Customer Session for embedded portal
-        const session = yield* createCustomerSession(subscription.stripe_customer_id)
+        const session = yield* createCustomerSession(subscription.stripe_customer_id as string)
 
         return new CustomerSession({
           client_secret: session.client_secret,
@@ -242,20 +179,7 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         const db = supabase()
 
         // Verify user is a member of this party
-        const { data: membership, error: memberError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("party_members")
-              .select("id")
-              .eq("party_id", urlParams.party_id)
-              .eq("profile_id", user.profileId)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (memberError || !membership) {
-          return yield* Effect.fail(new Forbidden({ message: "Not a member of this party" }))
-        }
+        yield* requirePartyMember(db, urlParams.party_id, user.profileId)
 
         // Check if this is a demo party (always "active")
         const { data: party, error: partyError } = yield* Effect.tryPromise({
@@ -317,38 +241,13 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         const db = supabase()
 
         // Verify user is an admin of this party
-        const { data: adminCheck, error: adminError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("party_admins")
-              .select("profile_id")
-              .eq("party_id", payload.party_id)
-              .eq("profile_id", user.profileId)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (adminError || !adminCheck) {
-          return yield* Effect.fail(new Forbidden({ message: "Must be party admin to update payment method" }))
-        }
+        yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const { data: subscription, error: subError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("subscriptions")
-              .select("stripe_customer_id")
-              .eq("party_id", payload.party_id)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (subError || !subscription) {
-          return yield* Effect.fail(new NotFound({ message: "No subscription found for this party" }))
-        }
+        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_customer_id")
 
         // Create Stripe SetupIntent
-        const setupIntent = yield* createSetupIntent(subscription.stripe_customer_id)
+        const setupIntent = yield* createSetupIntent(subscription.stripe_customer_id as string)
 
         return new SetupIntent({
           client_secret: setupIntent.client_secret!,
@@ -363,38 +262,13 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         const db = supabase()
 
         // Verify user is an admin of this party
-        const { data: adminCheck, error: adminError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("party_admins")
-              .select("profile_id")
-              .eq("party_id", payload.party_id)
-              .eq("profile_id", user.profileId)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (adminError || !adminCheck) {
-          return yield* Effect.fail(new Forbidden({ message: "Must be party admin to cancel subscription" }))
-        }
+        yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const { data: subscription, error: subError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("subscriptions")
-              .select("stripe_subscription_id")
-              .eq("party_id", payload.party_id)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (subError || !subscription) {
-          return yield* Effect.fail(new NotFound({ message: "No subscription found for this party" }))
-        }
+        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_subscription_id")
 
         // Cancel subscription at period end
-        const updated = yield* cancelSubscriptionAtPeriodEnd(subscription.stripe_subscription_id)
+        const updated = yield* cancelSubscriptionAtPeriodEnd(subscription.stripe_subscription_id as string)
 
         // Get current period end from subscription items
         const firstItem = updated.items?.data?.[0]
@@ -414,38 +288,13 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         const db = supabase()
 
         // Verify user is an admin of this party
-        const { data: adminCheck, error: adminError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("party_admins")
-              .select("profile_id")
-              .eq("party_id", payload.party_id)
-              .eq("profile_id", user.profileId)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (adminError || !adminCheck) {
-          return yield* Effect.fail(new Forbidden({ message: "Must be party admin to reactivate subscription" }))
-        }
+        yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const { data: subscription, error: subError } = yield* Effect.tryPromise({
-          try: () =>
-            db
-              .from("subscriptions")
-              .select("stripe_subscription_id")
-              .eq("party_id", payload.party_id)
-              .single(),
-          catch: () => new InternalError({ message: "Database error" }),
-        })
-
-        if (subError || !subscription) {
-          return yield* Effect.fail(new NotFound({ message: "No subscription found for this party" }))
-        }
+        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_subscription_id")
 
         // Reactivate subscription
-        const updated = yield* reactivateSubscription(subscription.stripe_subscription_id)
+        const updated = yield* reactivateSubscription(subscription.stripe_subscription_id as string)
 
         // Get current period end from subscription items
         const firstItem = updated.items?.data?.[0]

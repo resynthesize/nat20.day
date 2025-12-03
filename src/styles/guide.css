@@ -64,11 +64,19 @@
 
 .guide-mobile-menu-toggle {
   display: none;
+  position: fixed;
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+  width: 48px;
+  height: 48px;
   font-size: 1.5rem;
-  background: none;
+  background: var(--gold);
   border: none;
-  color: var(--text-primary);
+  border-radius: 50%;
+  color: var(--bg-primary);
   cursor: pointer;
+  z-index: 1001;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .guide-container {

@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { generateDates } from '../lib/dates'
 import { AvailabilityGrid, type GridMember, type GridAvailability } from '../components/schedule/AvailabilityGrid'
+import { LandingNav } from '../components/landing/LandingNav'
 
 const DEMO_PARTY_ID = 'party_DEMO0000'
+
+// Generate avatar URL using DiceBear's adventurer-neutral style
+function generateAvatarUrl(name: string): string {
+  const seed = encodeURIComponent(name.toLowerCase().replace(/\s+/g, '-'))
+  return `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${seed}`
+}
 
 export function DemoPage() {
   const [members, setMembers] = useState<GridMember[]>([])
@@ -46,11 +53,12 @@ export function DemoPage() {
           )
         }
 
-        // Transform to GridMember format
+        // Transform to GridMember format with generated avatars
         setMembers(
           (membersData || []).map(m => ({
             id: m.id,
             name: m.name,
+            avatarUrl: generateAvatarUrl(m.name),
             isLinked: true, // Demo members are all "linked"
           }))
         )
@@ -112,14 +120,7 @@ export function DemoPage() {
 
   return (
     <div className="demo-page">
-      <nav className="demo-nav">
-        <Link to="/" className="demo-logo">
-          nat20.day
-        </Link>
-        <Link to="/app" className="demo-signup-button">
-          Sign Up
-        </Link>
-      </nav>
+      <LandingNav />
 
       <div className="demo-content">
         <div className="demo-header">

@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactElement } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
+import { LandingNav } from '../components/landing/LandingNav'
 
 interface GuideSection {
   id: string
@@ -297,27 +298,15 @@ export function GuidePage() {
 
   return (
     <div className="guide-page">
-      <header className="guide-header">
-        <Link to="/" className="guide-logo">
-          nat20.day
-        </Link>
-        <nav className="guide-nav">
-          <Link to="/docs" className="guide-nav-link">
-            API Docs
-          </Link>
-          <Link to="/app" className="guide-nav-link guide-nav-cta">
-            Sign In
-          </Link>
-        </nav>
-        <button
-          type="button"
-          className="guide-mobile-menu-toggle"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? '×' : '☰'}
-        </button>
-      </header>
+      <LandingNav />
+      <button
+        type="button"
+        className="guide-mobile-menu-toggle"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label="Toggle sidebar"
+      >
+        {mobileMenuOpen ? '×' : '☰'}
+      </button>
 
       <div className="guide-container">
         <aside className={`guide-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
@@ -366,7 +355,7 @@ function GuideMarkdown({ content }: { content: string }) {
       elements.push(
         <ul key={`list-${elements.length}`} className="guide-list">
           {listItems.map((item, i) => (
-            <li key={i}>{item}</li>
+            <li key={i}><InlineMarkdown text={item} /></li>
           ))}
         </ul>
       )

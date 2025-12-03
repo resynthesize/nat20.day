@@ -7,7 +7,7 @@
 
 import Stripe from "stripe"
 import { Effect } from "effect"
-import { BillingError, ConfigError } from "./api.js"
+import { BillingError } from "../api.js"
 
 // ============================================================================
 // Stripe Client Initialization

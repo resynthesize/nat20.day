@@ -97,7 +97,11 @@ function AuthenticatedApp() {
           <button
             type="button"
             onClick={() => {
-              signOut().catch((err) => console.error('Sign out failed:', err))
+              signOut()
+                .then(() => {
+                  window.location.href = '/'
+                })
+                .catch((err) => console.error('Sign out failed:', err))
             }}
             className="sign-out-button"
           >
