@@ -5,6 +5,7 @@
 
 import { memo, useMemo, useCallback } from 'react'
 import { formatDateDisplay, getDayOfWeek } from '../../lib/dates'
+import { PartyDatesList } from './PartyDatesList'
 
 export interface GridMember {
   id: string
@@ -105,6 +106,7 @@ function AvailabilityGridComponent({
                 <span className="date-display">{formatDateDisplay(date)}</span>
                 <span className="available-count">
                   {countAvailable(date)}/{members.length}
+                  <span className="party-icon">🎲</span>
                 </span>
               </div>
             )
@@ -184,6 +186,8 @@ function AvailabilityGridComponent({
           Not set
         </span>
       </div>
+
+      <PartyDatesList dates={dates} isAllAvailable={isAllAvailable} />
     </div>
   )
 }

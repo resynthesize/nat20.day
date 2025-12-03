@@ -214,28 +214,39 @@
   color: var(--available);
 }
 
-/* All party members available */
+/* Party Date - All party members available (gold "NAT 20" highlight) */
 .date-header.all-available {
-  background: rgba(72, 187, 120, 0.15);
+  background: rgba(196, 146, 80, 0.2);
+  border-bottom: 2px solid var(--gold) !important;
 }
 
 .date-header.all-available .day-of-week {
-  color: var(--available);
+  color: var(--gold-light);
 }
 
 .date-header.all-available .date-display {
-  color: var(--text-primary);
-  font-weight: 500;
+  color: var(--gold-light);
+  font-weight: 600;
 }
 
 .date-header.all-available .available-count {
-  color: var(--available);
+  color: var(--gold);
   font-weight: 700;
+}
+
+.party-icon {
+  display: none;
+  font-size: 0.7rem;
+  margin-left: 2px;
+}
+
+.date-header.all-available .party-icon {
+  display: inline;
 }
 
 /* Column highlight when all available */
 .availability-cell.all-available-column.available {
-  background: rgba(72, 187, 120, 0.25) !important;
+  background: rgba(196, 146, 80, 0.2) !important;
 }
 
 /* Player Rows */
@@ -386,6 +397,82 @@
 
 .legend-dot.unset {
   background: var(--unset);
+}
+
+/* Party Dates List */
+.party-dates {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: rgba(196, 146, 80, 0.1);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-md);
+}
+
+.party-dates-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.party-dates-icon {
+  font-size: 1.25rem;
+}
+
+.party-dates-label {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.party-dates-next {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gold-light);
+}
+
+.party-dates-countdown {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.party-dates-toggle {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  transition: color 0.15s ease;
+}
+
+.party-dates-toggle:hover {
+  color: var(--gold);
+}
+
+.party-dates-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-sm) var(--spacing-md);
+}
+
+.party-dates-item {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
 }
 
 /* Footer */
