@@ -332,7 +332,7 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
           game_type: params.gameType,
           user_id: params.userId,
         },
-        expand: ["latest_invoice.payment_intent", "latest_invoice.payments.data.payment.payment_intent"],
+        expand: ["latest_invoice.payment_intent"],
       })
 
       // With default_incomplete, Stripe creates a PaymentIntent for collecting payment.
