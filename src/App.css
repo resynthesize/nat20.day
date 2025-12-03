@@ -1716,6 +1716,96 @@ body {
   color: var(--text-secondary);
 }
 
+/* Larger modal for payment form */
+.modal-content--payment {
+  max-width: 480px;
+}
+
+/* Payment Summary (shown above payment form) */
+.payment-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.payment-summary-party {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.payment-summary-amount {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+/* Payment Form Styles */
+.payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.payment-element-container {
+  min-height: 200px;
+}
+
+.payment-form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+/* Payment Success State */
+.payment-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+}
+
+.payment-success-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--available-bg);
+  border: 2px solid var(--available);
+  border-radius: 50%;
+  font-size: 2rem;
+  color: var(--available);
+  margin-bottom: var(--spacing-lg);
+}
+
+.payment-success h3 {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  color: var(--gold-light);
+  margin-bottom: var(--spacing-sm);
+}
+
+.payment-success p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.payment-success-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* ============================================= */
 /* Admin Panel Styles */
 /* ============================================= */
@@ -2006,6 +2096,58 @@ body {
 /* Settings Tab */
 .settings-form {
   margin-bottom: var(--spacing-xl);
+}
+
+/* Days of Week Selector */
+.days-settings {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.days-settings h3 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.days-selector {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-md) 0;
+  flex-wrap: wrap;
+}
+
+.day-toggle {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.875rem;
+  min-width: 3rem;
+  text-align: center;
+}
+
+.day-toggle:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.day-toggle.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.day-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .admin-list {

@@ -15,12 +15,28 @@ describe('dates', () => {
       expect(dates.length).toBeGreaterThan(0)
     })
 
-    it('only includes Thursdays and Fridays', () => {
+    it('defaults to Fridays and Saturdays', () => {
       const dates = generateDates(4)
       for (const date of dates) {
-        const isThurOrFri = isThursdayDate(date) || isFridayDate(date)
-        expect(isThurOrFri).toBe(true)
+        const dayOfWeek = getDayOfWeek(date)
+        expect(['Fri', 'Sat']).toContain(dayOfWeek)
       }
+    })
+
+    it('respects custom allowed days', () => {
+      // Test with only Mondays (1) and Wednesdays (3)
+      const dates = generateDates(4, [1, 3])
+      expect(dates.length).toBeGreaterThan(0)
+      for (const date of dates) {
+        const dayOfWeek = getDayOfWeek(date)
+        expect(['Mon', 'Wed']).toContain(dayOfWeek)
+      }
+    })
+
+    it('includes all 7 days when all are allowed', () => {
+      const dates = generateDates(2, [0, 1, 2, 3, 4, 5, 6])
+      // 2 weeks = 14 days, should have all of them
+      expect(dates.length).toBeGreaterThanOrEqual(14)
     })
 
     it('returns dates in yyyy-MM-dd format', () => {

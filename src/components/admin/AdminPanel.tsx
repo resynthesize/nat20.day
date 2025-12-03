@@ -7,6 +7,16 @@ import { parsePartyMembers, type PartyMember } from '../../lib/schemas'
 
 type TabType = 'members' | 'settings' | 'billing'
 
+const DAY_LABELS = [
+  { value: 0, label: 'Sun', fullLabel: 'Sunday' },
+  { value: 1, label: 'Mon', fullLabel: 'Monday' },
+  { value: 2, label: 'Tue', fullLabel: 'Tuesday' },
+  { value: 3, label: 'Wed', fullLabel: 'Wednesday' },
+  { value: 4, label: 'Thu', fullLabel: 'Thursday' },
+  { value: 5, label: 'Fri', fullLabel: 'Friday' },
+  { value: 6, label: 'Sat', fullLabel: 'Saturday' },
+]
+
 interface AdminInfo {
   profile_id: string
   profiles: { id: string; display_name: string; avatar_url: string | null } | null
@@ -39,6 +49,12 @@ export function AdminPanel() {
   // Edit party name
   const [partyName, setPartyName] = useState(currentParty?.name || '')
   const [savingName, setSavingName] = useState(false)
+
+  // Days of week selection
+  const [selectedDays, setSelectedDays] = useState<number[]>(
+    currentParty?.days_of_week ?? [5, 6]
+  )
+  const [savingDays, setSavingDays] = useState(false)
 
   // Billing
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
@@ -115,7 +131,8 @@ export function AdminPanel() {
   useEffect(() => {
     fetchData()
     setPartyName(currentParty?.name || '')
-  }, [fetchData, currentParty?.name])
+    setSelectedDays(currentParty?.days_of_week ?? [5, 6])
+  }, [fetchData, currentParty?.name, currentParty?.days_of_week])
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -242,6 +259,45 @@ export function AdminPanel() {
     } finally {
       setSavingName(false)
     }
+  }
+
+  const handleDayToggle = (day: number) => {
+    setSelectedDays((prev) => {
+      if (prev.includes(day)) {
+        // Don't allow removing last day
+        if (prev.length === 1) return prev
+        return prev.filter((d) => d !== day)
+      }
+      return [...prev, day].sort((a, b) => a - b)
+    })
+  }
+
+  const handleSaveDays = async () => {
+    if (!currentParty || selectedDays.length === 0) return
+
+    setSavingDays(true)
+    setError(null)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('parties')
+        .update({ days_of_week: selectedDays })
+        .eq('id', currentParty.id)
+
+      if (updateError) throw updateError
+      await refreshParties()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update schedule days')
+    } finally {
+      setSavingDays(false)
+    }
+  }
+
+  const arraysEqual = (a: number[], b: number[]) => {
+    if (a.length !== b.length) return false
+    const sortedA = [...a].sort((x, y) => x - y)
+    const sortedB = [...b].sort((x, y) => x - y)
+    return sortedA.every((val, idx) => val === sortedB[idx])
   }
 
   const isUserAdmin = (profileId: string) => admins.some((a) => a.profile_id === profileId)
@@ -498,6 +554,39 @@ export function AdminPanel() {
                 </button>
               </div>
             </form>
+
+            <div className="days-settings">
+              <h3>Schedule Days</h3>
+              <p className="form-hint">
+                Select which days of the week to show in the availability grid.
+              </p>
+              <div className="days-selector">
+                {DAY_LABELS.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    className={`day-toggle ${selectedDays.includes(day.value) ? 'selected' : ''}`}
+                    onClick={() => handleDayToggle(day.value)}
+                    title={day.fullLabel}
+                    disabled={savingDays}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="form-button"
+                onClick={handleSaveDays}
+                disabled={
+                  savingDays ||
+                  selectedDays.length === 0 ||
+                  arraysEqual(selectedDays, currentParty?.days_of_week ?? [5, 6])
+                }
+              >
+                {savingDays ? 'Saving...' : 'Save Schedule Days'}
+              </button>
+            </div>
 
             <div className="admin-list">
               <h3>Party Admins ({admins.length})</h3>

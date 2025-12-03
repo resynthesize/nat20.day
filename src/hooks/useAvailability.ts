@@ -18,9 +18,10 @@ interface AvailabilityState {
 
 interface UseAvailabilityOptions {
   partyId: string | null
+  daysOfWeek?: number[]
 }
 
-export function useAvailability({ partyId }: UseAvailabilityOptions) {
+export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions) {
   console.log('[Availability] useAvailability hook called with partyId:', partyId)
 
   const [state, setState] = useState<AvailabilityState>({
@@ -56,10 +57,10 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
     }
 
     try {
-      const dates = generateDates(8)
+      const dates = generateDates(8, daysOfWeek)
       const fromDate = dates[0]
       const toDate = dates[dates.length - 1]
-      console.log('[Availability] fetchData: querying supabase', { fromDate, toDate })
+      console.log('[Availability] fetchData: querying supabase', { fromDate, toDate, daysOfWeek })
 
       const [membersResult, availabilityResult] = await Promise.all([
         supabase
@@ -139,7 +140,7 @@ export function useAvailability({ partyId }: UseAvailabilityOptions) {
         error: err instanceof Error ? err.message : 'Failed to fetch data',
       }))
     }
-  }, [partyId])
+  }, [partyId, daysOfWeek])
 
   const setAvailability = useCallback(
     async (memberId: string, date: string, available: boolean) => {

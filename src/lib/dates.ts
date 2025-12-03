@@ -1,26 +1,24 @@
-import {
-  format,
-  parseISO,
-  isThursday,
-  isFriday,
-  addWeeks,
-  nextThursday,
-  nextFriday,
-} from 'date-fns'
+import { format, parseISO, addWeeks, addDays, getDay, isThursday, isFriday } from 'date-fns'
 
-export const generateDates = (weeks = 8): string[] => {
+// Default days: Friday (5) and Saturday (6)
+const DEFAULT_DAYS = [5, 6]
+
+export const generateDates = (weeks = 8, allowedDays: number[] = DEFAULT_DAYS): string[] => {
   const dates: string[] = []
   const today = new Date()
   const endDate = addWeeks(today, weeks)
 
-  let current = isThursday(today) || isFriday(today) ? today : nextThursday(today)
+  // Create a Set for O(1) lookup
+  const allowedDaysSet = new Set(allowedDays)
 
+  let current = today
+
+  // Iterate through each day in the range
   while (current <= endDate) {
-    if (isThursday(current) || isFriday(current)) {
+    if (allowedDaysSet.has(getDay(current))) {
       dates.push(format(current, 'yyyy-MM-dd'))
     }
-
-    current = isThursday(current) ? nextFriday(current) : nextThursday(current)
+    current = addDays(current, 1)
   }
 
   return dates

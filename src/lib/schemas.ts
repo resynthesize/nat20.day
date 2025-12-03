@@ -26,6 +26,7 @@ export const PartySchema = z.object({
   id: z.string(),
   name: z.string(),
   created_at: z.string(),
+  days_of_week: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
 })
 
 export type Party = z.infer<typeof PartySchema>

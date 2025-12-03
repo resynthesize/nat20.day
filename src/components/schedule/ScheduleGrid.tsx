@@ -14,7 +14,10 @@ export function ScheduleGrid() {
     getAvailability,
     setAvailability,
     clearAvailability,
-  } = useAvailability({ partyId: currentParty?.id ?? null })
+  } = useAvailability({
+    partyId: currentParty?.id ?? null,
+    daysOfWeek: currentParty?.days_of_week,
+  })
 
   console.log('[ScheduleGrid] render:', {
     hasUser: !!user,
