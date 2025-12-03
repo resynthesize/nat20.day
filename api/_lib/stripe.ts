@@ -332,23 +332,25 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
           game_type: params.gameType,
           user_id: params.userId,
         },
-        expand: ["latest_invoice.payment_intent"],
+        expand: ["latest_invoice"],
       })
 
-      // Extract client_secret from the expanded payment intent
-      // Type assertion needed because TypeScript doesn't know about expand
-      const invoice = subscription.latest_invoice as Stripe.Invoice & {
-        payment_intent: Stripe.PaymentIntent | null
+      // Extract client_secret from the Invoice's confirmation_secret
+      // This is the properly typed approach - Invoice.confirmation_secret contains
+      // the PaymentIntent's client_secret after invoice finalization
+      const invoice = subscription.latest_invoice
+      if (typeof invoice === "string" || !invoice) {
+        throw new Error("Invoice not expanded in subscription response")
       }
-      const paymentIntent = invoice.payment_intent
 
-      if (!paymentIntent?.client_secret) {
-        throw new Error("No payment intent created for subscription")
+      const clientSecret = invoice.confirmation_secret?.client_secret
+      if (!clientSecret) {
+        throw new Error("No confirmation secret available for subscription invoice")
       }
 
       return {
         subscriptionId: subscription.id,
-        clientSecret: paymentIntent.client_secret,
+        clientSecret,
         customerId: customer.id,
       } satisfies SubscriptionWithClientSecret
     },
