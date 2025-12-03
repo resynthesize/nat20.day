@@ -63,6 +63,7 @@ export function PartyProvider({ children }: { children: ReactNode }) {
         created_at,
         is_demo,
         days_of_week,
+        theme,
         party_admins (
           profile_id
         )

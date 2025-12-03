@@ -7,6 +7,7 @@ import { GuidePage } from './pages/GuidePage'
 import { DocsPage } from './pages/DocsPage'
 import { OAuthConsentPage } from './pages/OAuthConsentPage'
 import { PartyProvider, useParty } from './hooks/useParty'
+import { ThemeProvider } from './hooks/useTheme'
 import { AuthTabs } from './components/auth/AuthTabs'
 import { ScheduleGrid } from './components/schedule/ScheduleGrid'
 import { ProfilePage } from './components/profile/ProfilePage'
@@ -258,9 +259,11 @@ function App() {
 
     return (
       <PartyProvider>
-        <Routes>
-          <Route path="/app/*" element={<AuthenticatedApp />} />
-        </Routes>
+        <ThemeProvider>
+          <Routes>
+            <Route path="/app/*" element={<AuthenticatedApp />} />
+          </Routes>
+        </ThemeProvider>
       </PartyProvider>
     )
   }

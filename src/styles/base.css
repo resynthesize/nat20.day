@@ -1,12 +1,15 @@
-/* nat20.day - D&D Session Scheduler */
-/* Design inspired by D&D Beyond */
+/* nat20.day - Session Scheduler */
+/* Supports multiple game themes: D&D, MTG, Vampire: The Masquerade */
 
-/* Google Fonts */
+/* Google Fonts - Default (D&D) font, others loaded dynamically by ThemeProvider */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-/* CSS Variables */
+/* CSS Variables - Theme-aware
+ * Values below are defaults (D&D theme) for initial render.
+ * ThemeProvider overrides these at runtime based on party theme.
+ */
 :root {
-  /* Colors - D&D Beyond inspired dark theme */
+  /* Colors - Defaults match D&D theme */
   --bg-primary: #12181c;
   --bg-secondary: #1a1f23;
   --bg-tertiary: #232b2f;

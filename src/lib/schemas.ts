@@ -1,6 +1,13 @@
 import { z } from 'zod'
 
 // =============================================================================
+// Theme Schemas
+// =============================================================================
+
+export const ThemeIdSchema = z.enum(['dnd', 'mtg', 'vtm'])
+export type ThemeId = z.infer<typeof ThemeIdSchema>
+
+// =============================================================================
 // Profile Schemas
 // =============================================================================
 
@@ -27,6 +34,7 @@ export const PartySchema = z.object({
   name: z.string(),
   created_at: z.string(),
   days_of_week: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
+  theme: ThemeIdSchema.optional().default('dnd'),
 })
 
 export type Party = z.infer<typeof PartySchema>

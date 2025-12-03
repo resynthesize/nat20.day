@@ -5,6 +5,7 @@ import { useParty } from '../../hooks/useParty'
 import { useAuth } from '../../hooks/useAuth'
 import { parsePartyMembers, type PartyMember } from '../../lib/schemas'
 import { UpdatePaymentModal } from './UpdatePaymentModal'
+import { ThemeSelector } from './ThemeSelector'
 
 type TabType = 'members' | 'settings' | 'billing'
 
@@ -700,6 +701,8 @@ export function AdminPanel() {
                 {savingDays ? 'Saving...' : 'Save Schedule Days'}
               </button>
             </div>
+
+            <ThemeSelector />
 
             <div className="admin-list">
               <h3>Party Admins ({admins.length})</h3>
