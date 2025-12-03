@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { DemoPage } from './pages/DemoPage'
 import { GuidePage } from './pages/GuidePage'
 import { DocsPage } from './pages/DocsPage'
+import { SignupPage } from './pages/SignupPage'
 import { OAuthConsentPage } from './pages/OAuthConsentPage'
 import { PartyProvider, useParty } from './hooks/useParty'
 import { ThemeProvider } from './hooks/useTheme'
@@ -38,6 +39,53 @@ function AuthenticatedApp() {
   const [showCreatePartyModal, setShowCreatePartyModal] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const [checkoutMessage, setCheckoutMessage] = useState<{ type: 'success' | 'canceled'; text: string } | null>(null)
+
+  const { session } = useAuth()
+  const [isCompletingSignup, setIsCompletingSignup] = useState(false)
+
+  // Handle pending signup completion (from pre-auth signup flow)
+  useEffect(() => {
+    const pendingSignupId = searchParams.get('complete_signup')
+    if (pendingSignupId && session && !isCompletingSignup) {
+      setIsCompletingSignup(true)
+
+      // Call the signup completion endpoint
+      fetch('/api/v1/signup/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          pending_signup_id: pendingSignupId,
+        }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => null)
+            throw new Error(errorData?.message || 'Failed to complete signup')
+          }
+          return res.json()
+        })
+        .then((data) => {
+          // Clear pending signup from localStorage
+          localStorage.removeItem('nat20-pending-signup')
+          setCheckoutMessage({ type: 'success', text: `Party "${data.party_name}" created successfully! Welcome to your new adventure.` })
+          // Refresh parties and select the newest one
+          refreshParties({ selectNewest: true })
+        })
+        .catch((err) => {
+          console.error('Failed to complete signup:', err)
+          setCheckoutMessage({ type: 'canceled', text: err.message || 'Failed to complete signup. Please try again.' })
+        })
+        .finally(() => {
+          // Clean up the URL
+          searchParams.delete('complete_signup')
+          setSearchParams(searchParams, { replace: true })
+          setIsCompletingSignup(false)
+        })
+    }
+  }, [searchParams, setSearchParams, session, refreshParties, isCompletingSignup])
 
   // Handle checkout redirect results
   useEffect(() => {
@@ -186,6 +234,7 @@ function PublicRoutes() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/demo" element={<DemoPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route path="/guide" element={<GuidePage />} />
       <Route path="/guide/:section" element={<GuidePage />} />
       <Route path="/privacy" element={<PlaceholderPage title="Privacy Policy" />} />
@@ -220,7 +269,7 @@ function App() {
   const location = useLocation()
 
   // Check if this is a public route
-  const publicPaths = ['/', '/demo', '/guide', '/privacy', '/terms']
+  const publicPaths = ['/', '/demo', '/signup', '/guide', '/privacy', '/terms']
   const isPublicPath = publicPaths.some(path =>
     location.pathname === path || location.pathname.startsWith(path + '/')
   )

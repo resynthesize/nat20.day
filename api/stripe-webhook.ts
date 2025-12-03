@@ -252,7 +252,8 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
 
 /**
  * Handle invoice.paid event for embedded payment flow
- * Creates party and subscription when first invoice is paid
+ * Creates party and subscription when first invoice is paid (authenticated flow)
+ * OR marks pending signup as paid (pre-auth flow)
  */
 async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   // Check if this is a subscription creation invoice (first payment)
@@ -297,9 +298,30 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   const gameType = metadata.game_type || "dnd"
   const userId = metadata.user_id
 
-  if (!partyName || !userId) {
+  // Check if this is a pending signup (no user_id means pre-auth flow)
+  if (!userId) {
+    console.log(`No user_id in subscription ${subscriptionId} - this is a pending signup`)
+
+    // Mark the pending signup as payment completed
+    const { error: updateError, data: updatedSignup } = await supabase
+      .from("pending_signups")
+      .update({ payment_completed: true })
+      .eq("stripe_subscription_id", subscriptionId)
+      .select("id")
+      .single()
+
+    if (updateError) {
+      console.error("Failed to mark pending signup as paid:", updateError)
+      throw new Error(`Failed to update pending signup: ${updateError.message}`)
+    }
+
+    console.log(`Marked pending signup ${updatedSignup?.id} as payment completed`)
+    return
+  }
+
+  if (!partyName) {
     console.error("Missing required metadata in subscription:", metadata)
-    throw new Error("Missing party_name or user_id in subscription metadata")
+    throw new Error("Missing party_name in subscription metadata")
   }
 
   console.log(`Creating party "${partyName}" for user ${userId} via embedded payment`)

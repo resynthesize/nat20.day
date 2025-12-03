@@ -30,7 +30,7 @@ export function Hero() {
         <p className="hero-tagline">"{tagline}"</p>
 
         <div className="hero-cta">
-          <Link to="/app" className="cta-button cta-button-primary">
+          <Link to="/signup" className="cta-button cta-button-primary">
             Start Your Party
           </Link>
           <Link to="/demo" className="cta-button cta-button-secondary">

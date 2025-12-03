@@ -23,10 +23,11 @@ import { Layer } from "effect"
 import type { VercelRequest, VercelResponse } from "@vercel/node"
 import { Nat20ApiLive } from "./_lib/handlers/index.js"
 import { BillingHandlers } from "./_lib/billing/index.js"
+import { SignupPublicHandlers, SignupHandlers } from "./_lib/signup/index.js"
 import { Nat20Api } from "./_lib/api.js"
 
 // Merge all handler layers
-const AllHandlers = Layer.mergeAll(Nat20ApiLive, BillingHandlers)
+const AllHandlers = Layer.mergeAll(Nat20ApiLive, BillingHandlers, SignupPublicHandlers, SignupHandlers)
 
 // Create web handler from Effect API
 // The API layer is provided with handler implementations

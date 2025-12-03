@@ -58,7 +58,7 @@ export function Pricing() {
             </li>
           </ul>
 
-          <Link to="/app" className="pricing-cta">
+          <Link to="/signup" className="pricing-cta">
             Start Your Party
           </Link>
 

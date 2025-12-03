@@ -11,6 +11,8 @@ interface PaymentFormProps {
   isProcessing: boolean
   setIsProcessing: (processing: boolean) => void
   setError: (error: string | null) => void
+  /** Custom return URL for 3D Secure redirects. Defaults to /app?checkout=success */
+  returnUrl?: string
 }
 
 /**
@@ -25,6 +27,7 @@ export function PaymentForm({
   isProcessing,
   setIsProcessing,
   setError,
+  returnUrl,
 }: PaymentFormProps) {
   const stripe = useStripe()
   const elements = useElements()
@@ -45,7 +48,7 @@ export function PaymentForm({
       elements,
       confirmParams: {
         // Return URL after payment (for 3D Secure redirects)
-        return_url: `${window.location.origin}/app?checkout=success`,
+        return_url: returnUrl ?? `${window.location.origin}/app?checkout=success`,
       },
       redirect: 'if_required',
     })

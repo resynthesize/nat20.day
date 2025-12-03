@@ -82,37 +82,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchProfile])
 
+  // Helper to get redirect URL (includes pending signup ID if present)
+  const getRedirectUrl = useCallback(() => {
+    const pendingSignup = localStorage.getItem('nat20-pending-signup')
+    if (pendingSignup) {
+      try {
+        const { id } = JSON.parse(pendingSignup)
+        if (id) {
+          return `${window.location.origin}/app?complete_signup=${id}`
+        }
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+    return `${window.location.origin}/app`
+  }, [])
+
   const signInWithGoogle = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/app`,
+        redirectTo: getRedirectUrl(),
       },
     })
     if (error) {
       console.error('Error signing in with Google:', error.message)
       throw error
     }
-  }, [])
+  }, [getRedirectUrl])
 
   const signInWithDiscord = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: `${window.location.origin}/app`,
+        redirectTo: getRedirectUrl(),
       },
     })
     if (error) {
       console.error('Error signing in with Discord:', error.message)
       throw error
     }
-  }, [])
+  }, [getRedirectUrl])
 
   const signInWithEmail = useCallback(async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: getRedirectUrl(),
       },
     })
     if (error) {
@@ -120,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: error.message }
     }
     return { success: true }
-  }, [])
+  }, [getRedirectUrl])
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()

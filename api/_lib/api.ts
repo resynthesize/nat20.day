@@ -164,6 +164,45 @@ export class SubscriptionQueryParams extends Schema.Class<SubscriptionQueryParam
 }) {}
 
 // ============================================================================
+// Signup Schemas (Pre-auth flow)
+// ============================================================================
+
+/** Request body for starting a signup (no auth required) */
+export class SignupStartBody extends Schema.Class<SignupStartBody>("SignupStartBody")({
+  email: Schema.String.pipe(Schema.minLength(1)).annotations({
+    description: "Email address for the new user",
+    examples: ["adventurer@example.com"],
+  }),
+  party_name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)).annotations({
+    description: "Name for the new party",
+    examples: ["The Dungeon Delvers"],
+  }),
+  game_type: Schema.optionalWith(GameType, { default: () => "dnd" as const }).annotations({
+    description: "Type of tabletop game",
+  }),
+}) {}
+
+/** Response from starting a signup */
+export class SignupStartResponse extends Schema.Class<SignupStartResponse>("SignupStartResponse")({
+  pending_signup_id: Schema.String.annotations({ description: "ID to use for completing signup after OAuth" }),
+  client_secret: Schema.String.annotations({ description: "Stripe client_secret for Payment Element (empty if payment already completed)" }),
+  payment_completed: Schema.Boolean.annotations({ description: "Whether payment has already been completed" }),
+}) {}
+
+/** Request body for completing a signup (auth required) */
+export class SignupCompleteBody extends Schema.Class<SignupCompleteBody>("SignupCompleteBody")({
+  pending_signup_id: Schema.String.annotations({
+    description: "ID from signupStart response",
+  }),
+}) {}
+
+/** Response from completing a signup */
+export class SignupCompleteResponse extends Schema.Class<SignupCompleteResponse>("SignupCompleteResponse")({
+  party_id: Schema.String.annotations({ description: "ID of the created party" }),
+  party_name: Schema.String.annotations({ description: "Name of the created party" }),
+}) {}
+
+// ============================================================================
 // Error Schemas
 // ============================================================================
 
@@ -374,6 +413,26 @@ const reactivateSubscription = HttpApiEndpoint.post("reactivateSubscription", "/
   .annotate(OpenApi.Summary, "Reactivate subscription")
   .annotate(OpenApi.Description, "Removes the scheduled cancellation so the subscription will renew.")
 
+// ── Signup Endpoints (Pre-auth flow) ────────────────────────────────────────
+
+const signupStart = HttpApiEndpoint.post("signupStart", "/signup/start")
+  .setPayload(SignupStartBody)
+  .addSuccess(SignupStartResponse)
+  .addError(InvalidInput, { status: 400 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Start signup flow")
+  .annotate(OpenApi.Description, "Creates a pending signup with Stripe subscription. Returns client_secret for payment. No authentication required.")
+
+const signupComplete = HttpApiEndpoint.post("signupComplete", "/signup/complete")
+  .setPayload(SignupCompleteBody)
+  .addSuccess(SignupCompleteResponse)
+  .addError(Unauthorized, { status: 401 })
+  .addError(NotFound, { status: 404 })
+  .addError(InvalidInput, { status: 400 })
+  .addError(BillingError, { status: 402 })
+  .annotate(OpenApi.Summary, "Complete signup flow")
+  .annotate(OpenApi.Description, "Finalizes party creation after OAuth. Requires authentication.")
+
 // ============================================================================
 // API Groups
 // ============================================================================
@@ -403,6 +462,17 @@ const billingGroup = HttpApiGroup.make("billing")
   .middleware(Authentication)
   .annotate(OpenApi.Title, "Billing")
 
+// Signup group: signupStart is unauthenticated
+const signupPublicGroup = HttpApiGroup.make("signupPublic")
+  .add(signupStart)
+  .annotate(OpenApi.Title, "Signup")
+
+// Signup completion requires authentication
+const signupGroup = HttpApiGroup.make("signup")
+  .add(signupComplete)
+  .middleware(Authentication)
+  .annotate(OpenApi.Title, "Signup (Authenticated)")
+
 // ============================================================================
 // Full API Definition
 // ============================================================================
@@ -411,6 +481,8 @@ export class Nat20Api extends HttpApi.make("nat20")
   .add(userGroup)
   .add(availabilityGroup)
   .add(billingGroup)
+  .add(signupPublicGroup)
+  .add(signupGroup)
   .addError(Unauthorized, { status: 401 })
   .addError(InternalError, { status: 500 })
   .annotate(OpenApi.Title, "nat20.day API")
