@@ -326,6 +326,7 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
         payment_behavior: "default_incomplete",
         payment_settings: {
           save_default_payment_method: "on_subscription",
+          payment_method_types: ["card", "link"],
         },
         metadata: {
           party_name: params.partyName,
