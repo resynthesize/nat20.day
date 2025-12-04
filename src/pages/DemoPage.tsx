@@ -7,10 +7,10 @@ import { LandingNav } from '../components/landing/LandingNav'
 
 const DEMO_PARTY_ID = 'party_DEMO0000'
 
-// Generate avatar URL using DiceBear's adventurer-neutral style
+// Generate avatar URL using DiceBear's lorelei style (fantasy/D&D aesthetic)
 function generateAvatarUrl(name: string): string {
   const seed = encodeURIComponent(name.toLowerCase().replace(/\s+/g, '-'))
-  return `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${seed}`
+  return `https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}`
 }
 
 export function DemoPage() {
