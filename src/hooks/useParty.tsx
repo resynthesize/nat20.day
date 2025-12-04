@@ -5,9 +5,10 @@ import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
 import { fetchParties } from '../lib/queries'
 import { type PartyWithAdmins } from '../lib/schemas'
+import { STORAGE_KEYS, CACHE } from '../lib/constants'
 import { useAuth } from './useAuth'
 
-const STORAGE_KEY = 'nat20-current-party'
+const STORAGE_KEY = STORAGE_KEYS.CURRENT_PARTY
 
 interface PartyContextValue {
   parties: PartyWithAdmins[]
@@ -59,7 +60,7 @@ export function PartyProvider({ children }: { children: ReactNode }) {
     queryKey: queryKeys.parties(user?.id ?? ''),
     queryFn: () => fetchParties(user!.id),
     enabled: isAuthenticated && !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE.STALE_TIME_DEFAULT,
   })
 
   // Compute currentParty from parties list and currentPartyId

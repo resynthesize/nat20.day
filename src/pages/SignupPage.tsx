@@ -7,6 +7,7 @@ import { PaymentForm } from '../components/party/PaymentForm'
 import { OAuthButton } from '../components/auth/OAuthButton'
 import { LandingNav } from '../components/landing/LandingNav'
 import { Footer } from '../components/landing/Footer'
+import { STORAGE_KEYS } from '../lib/constants'
 
 type GameType = 'dnd' | 'mtg' | 'warhammer' | 'boardgames' | 'other'
 type SignupStep = 'details' | 'payment' | 'auth'
@@ -82,7 +83,7 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
   : null
 
 // LocalStorage key for pending signup
-const PENDING_SIGNUP_KEY = 'nat20-pending-signup'
+const PENDING_SIGNUP_KEY = STORAGE_KEYS.PENDING_SIGNUP
 
 export function SignupPage() {
   const { signInWithGoogle, signInWithDiscord, signInWithEmail } = useAuth()

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
 import { fetchSubscription, type SubscriptionInfo } from '../lib/queries'
+import { CACHE } from '../lib/constants'
 
 interface UseSubscriptionQueryOptions {
   enabled?: boolean
@@ -23,8 +24,8 @@ export function useSubscriptionQuery(
     },
     enabled: !!partyId && (options.enabled ?? true),
     // AGGRESSIVE caching for Vercel API - free tier limits
-    staleTime: 60 * 60 * 1000, // 1 hour
-    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+    staleTime: CACHE.STALE_TIME_VERY_LONG,
+    gcTime: CACHE.GC_TIME_VERY_LONG,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   })

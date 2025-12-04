@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
 import { fetchPartyMembers } from '../lib/queries'
+import { CACHE } from '../lib/constants'
 import type { PartyMember } from '../lib/schemas'
 
 export function usePartyMembersQuery(partyId: string | undefined) {
@@ -9,7 +10,7 @@ export function usePartyMembersQuery(partyId: string | undefined) {
     queryKey: queryKeys.partyMembers(partyId ?? ''),
     queryFn: () => fetchPartyMembers(partyId!),
     enabled: !!partyId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE.STALE_TIME_DEFAULT,
   })
 }
 

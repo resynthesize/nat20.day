@@ -2,13 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
 import { fetchPartyAdmins, type AdminInfo } from '../lib/queries'
+import { CACHE } from '../lib/constants'
 
 export function usePartyAdminsQuery(partyId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.partyAdmins(partyId ?? ''),
     queryFn: () => fetchPartyAdmins(partyId!),
     enabled: !!partyId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE.STALE_TIME_DEFAULT,
   })
 }
 

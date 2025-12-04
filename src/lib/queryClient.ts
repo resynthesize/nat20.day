@@ -1,12 +1,11 @@
 import { QueryClient } from '@tanstack/react-query'
+import { CACHE } from './constants'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Default: 5 minute stale time for Supabase data
-      staleTime: 5 * 60 * 1000,
-      // Keep data in cache for 30 minutes
-      gcTime: 30 * 60 * 1000,
+      staleTime: CACHE.STALE_TIME_DEFAULT,
+      gcTime: CACHE.GC_TIME_DEFAULT,
       // Disable automatic refetching - we use real-time subscriptions
       refetchOnWindowFocus: false,
       refetchOnMount: false,

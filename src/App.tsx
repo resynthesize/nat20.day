@@ -16,6 +16,7 @@ import { ProfilePage } from './components/profile/ProfilePage'
 import { AdminPanel } from './components/admin/AdminPanel'
 import { PartySelector } from './components/party/PartySelector'
 import { CreatePartyModal } from './components/party/CreatePartyModal'
+import { STORAGE_KEYS, UI_TIMING } from './lib/constants'
 import './styles/index.css'
 
 const taglines = [
@@ -73,7 +74,7 @@ function AuthenticatedApp() {
         })
         .then((data) => {
           // Clear pending signup from localStorage
-          localStorage.removeItem('nat20-pending-signup')
+          localStorage.removeItem(STORAGE_KEYS.PENDING_SIGNUP)
           setCheckoutMessage({ type: 'success', text: `Party "${data.party_name}" created successfully! Welcome to your new adventure.` })
           // Refresh parties and select the newest one
           refreshParties({ selectNewest: true })
@@ -110,10 +111,10 @@ function AuthenticatedApp() {
     }
   }, [searchParams, setSearchParams, refreshParties])
 
-  // Auto-dismiss checkout message after 5 seconds
+  // Auto-dismiss checkout message
   useEffect(() => {
     if (checkoutMessage) {
-      const timer = setTimeout(() => setCheckoutMessage(null), 5000)
+      const timer = setTimeout(() => setCheckoutMessage(null), UI_TIMING.TOAST_DURATION)
       return () => clearTimeout(timer)
     }
   }, [checkoutMessage])

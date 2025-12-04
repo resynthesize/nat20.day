@@ -1,9 +1,10 @@
 import { format, parseISO, addWeeks, addDays, getDay, isThursday, isFriday } from 'date-fns'
+import { SCHEDULE } from './constants'
 
-// Default days: Friday (5) and Saturday (6)
-const DEFAULT_DAYS = [5, 6]
-
-export const generateDates = (weeks = 8, allowedDays: number[] = DEFAULT_DAYS): string[] => {
+export const generateDates = (
+  weeks: number = SCHEDULE.WEEKS_TO_DISPLAY,
+  allowedDays: number[] = [...SCHEDULE.DEFAULT_DAYS]
+): string[] => {
   const dates: string[] = []
   const today = new Date()
   const endDate = addWeeks(today, weeks)

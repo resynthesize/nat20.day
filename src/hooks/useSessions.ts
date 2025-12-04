@@ -4,6 +4,7 @@ import { differenceInDays, parseISO, isBefore, startOfDay } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
 import { parseSessions, type Session } from '../lib/schemas'
+import { CACHE } from '../lib/constants'
 import { useAuth } from './useAuth'
 
 interface UseSessionsOptions {
@@ -61,7 +62,7 @@ export function useSessions({
       return parseSessions(data)
     },
     enabled: !!partyId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE.STALE_TIME_DEFAULT,
   })
 
   // Find the most recent session

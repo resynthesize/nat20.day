@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
 import { fetchApiTokens, type ApiToken } from '../lib/queries'
+import { CACHE } from '../lib/constants'
 
 interface UseApiTokensOptions {
   userId: string | null
@@ -27,8 +28,8 @@ export function useApiTokens({ userId }: UseApiTokensOptions) {
     },
     enabled: !!userId,
     // AGGRESSIVE caching for Vercel API - free tier limits
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: 60 * 60 * 1000, // 1 hour
+    staleTime: CACHE.STALE_TIME_LONG,
+    gcTime: CACHE.GC_TIME_LONG,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   })

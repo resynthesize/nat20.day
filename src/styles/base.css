@@ -124,3 +124,105 @@ body {
 .error {
   color: var(--unavailable);
 }
+
+/* Error Boundary - full page error state */
+.error-boundary {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  background: var(--bg-primary);
+}
+
+.error-boundary-content {
+  max-width: 480px;
+  text-align: center;
+}
+
+.error-boundary h1 {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--gold);
+  margin-bottom: var(--spacing-sm);
+}
+
+.error-boundary-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.error-boundary-details {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  text-align: left;
+}
+
+.error-boundary-details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.error-boundary-details pre {
+  font-size: 0.75rem;
+  color: var(--unavailable);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.error-boundary-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.error-boundary-button.primary {
+  background: var(--gold);
+  color: var(--bg-primary);
+  border: none;
+}
+
+.error-boundary-button.primary:hover {
+  background: var(--gold-hover);
+}
+
+.error-boundary-button.secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.error-boundary-button.secondary:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.error-boundary-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.error-boundary-hint a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.error-boundary-hint a:hover {
+  text-decoration: underline;
+}

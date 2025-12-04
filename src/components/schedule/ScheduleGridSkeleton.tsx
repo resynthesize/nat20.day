@@ -7,8 +7,9 @@
  */
 
 import { SkeletonBox } from '../ui/skeleton'
+import { STORAGE_KEYS } from '../../lib/constants'
 
-const STORAGE_KEY = 'nat20-last-member-count'
+const STORAGE_KEY = STORAGE_KEYS.LAST_MEMBER_COUNT
 const DEFAULT_MEMBER_COUNT = 6
 
 // Approximate row heights from schedule.css

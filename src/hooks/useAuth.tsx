@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, createContext, useContext, type React
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { parseProfile, type Profile } from '../lib/schemas'
+import { STORAGE_KEYS } from '../lib/constants'
 
 interface AuthState {
   user: User | null
@@ -84,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Helper to get redirect URL (includes pending signup ID if present)
   const getRedirectUrl = useCallback(() => {
-    const pendingSignup = localStorage.getItem('nat20-pending-signup')
+    const pendingSignup = localStorage.getItem(STORAGE_KEYS.PENDING_SIGNUP)
     if (pendingSignup) {
       try {
         const { id } = JSON.parse(pendingSignup)

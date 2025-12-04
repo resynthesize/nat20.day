@@ -5,6 +5,7 @@ import { useParty } from './useParty'
 import { queryKeys } from '../lib/queryKeys'
 import { fetchPartyMembers, fetchPartyAdmins } from '../lib/queries'
 import { fetchAvailabilityData } from './useAvailability'
+import { CACHE } from '../lib/constants'
 
 /**
  * Prefetches data on login to improve navigation speed.
@@ -45,13 +46,13 @@ export function usePrefetchOnLogin() {
     queryClient.prefetchQuery({
       queryKey: queryKeys.partyMembers(currentParty.id),
       queryFn: () => fetchPartyMembers(currentParty.id),
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: CACHE.STALE_TIME_DEFAULT,
     })
 
     queryClient.prefetchQuery({
       queryKey: queryKeys.partyAdmins(currentParty.id),
       queryFn: () => fetchPartyAdmins(currentParty.id),
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: CACHE.STALE_TIME_DEFAULT,
     })
   }, [isAuthenticated, currentParty, queryClient])
 }

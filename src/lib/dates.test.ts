@@ -15,11 +15,11 @@ describe('dates', () => {
       expect(dates.length).toBeGreaterThan(0)
     })
 
-    it('defaults to Fridays and Saturdays', () => {
+    it('defaults to Thursdays and Fridays', () => {
       const dates = generateDates(4)
       for (const date of dates) {
         const dayOfWeek = getDayOfWeek(date)
-        expect(['Fri', 'Sat']).toContain(dayOfWeek)
+        expect(['Thu', 'Fri']).toContain(dayOfWeek)
       }
     })
 

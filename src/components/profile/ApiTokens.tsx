@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApiTokens } from '../../hooks/useApiTokens'
 import { formatDistanceToNow } from 'date-fns'
+import { UI_TIMING } from '../../lib/constants'
 
 interface ApiTokensProps {
   userId: string | null
@@ -39,7 +40,7 @@ export function ApiTokens({ userId }: ApiTokensProps) {
     if (newToken) {
       await navigator.clipboard.writeText(newToken)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), UI_TIMING.COPY_FEEDBACK_DURATION)
     }
   }
 

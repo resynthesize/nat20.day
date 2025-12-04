@@ -9,6 +9,7 @@ import {
   type AvailabilityWithMember,
 } from '../lib/schemas'
 import { generateDates } from '../lib/dates'
+import { STORAGE_KEYS, CACHE } from '../lib/constants'
 
 interface AvailabilityData {
   dates: string[]
@@ -84,7 +85,7 @@ export async function fetchAvailabilityData(
 
   // Persist member count for skeleton loading state
   try {
-    localStorage.setItem('nat20-last-member-count', String(parsedMembers.length))
+    localStorage.setItem(STORAGE_KEYS.LAST_MEMBER_COUNT, String(parsedMembers.length))
   } catch {
     // localStorage may not be available
   }
@@ -99,8 +100,9 @@ export async function fetchAvailabilityData(
 export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions) {
   const queryClient = useQueryClient()
 
-  // Skip realtime refreshes during local mutations to prevent flash
-  const mutatingRef = useRef(false)
+  // Track pending mutations by (memberId, date) key with their start timestamp
+  // This prevents real-time events from our own mutations causing UI flash
+  const pendingMutationsRef = useRef<Map<string, number>>(new Map())
 
   // TanStack Query for initial fetch + caching
   const {
@@ -113,7 +115,7 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
     enabled: !!partyId,
     // Never automatically refetch - real-time handles updates
     staleTime: Infinity,
-    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    gcTime: CACHE.GC_TIME_DEFAULT,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
@@ -138,7 +140,9 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
 
   const setAvailability = useCallback(
     async (memberId: string, date: string, available: boolean) => {
-      mutatingRef.current = true
+      const mutationKey = `${memberId}-${date}`
+      const mutationTime = Date.now()
+      pendingMutationsRef.current.set(mutationKey, mutationTime)
 
       // Optimistic update
       updateCache((old) => {
@@ -183,10 +187,8 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
           { onConflict: 'party_member_id,date' }
         )
 
-      // Small delay to let realtime event pass before allowing refreshes
-      setTimeout(() => {
-        mutatingRef.current = false
-      }, 500)
+      // Clear pending mutation after server confirms (or errors)
+      pendingMutationsRef.current.delete(mutationKey)
 
       if (error) {
         console.error('Error setting availability:', error)
@@ -199,7 +201,9 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
 
   const clearAvailability = useCallback(
     async (memberId: string, date: string) => {
-      mutatingRef.current = true
+      const mutationKey = `${memberId}-${date}`
+      const mutationTime = Date.now()
+      pendingMutationsRef.current.set(mutationKey, mutationTime)
 
       // Optimistic update
       updateCache((old) => {
@@ -218,14 +222,11 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
         .eq('party_member_id', memberId)
         .eq('date', date)
 
-      // Small delay to let realtime event pass before allowing refreshes
-      setTimeout(() => {
-        mutatingRef.current = false
-      }, 500)
+      // Clear pending mutation after server confirms (or errors)
+      pendingMutationsRef.current.delete(mutationKey)
 
       if (error) {
         console.error('Error clearing availability:', error)
-        mutatingRef.current = false
         // Refetch on error to restore correct state
         queryClient.invalidateQueries({ queryKey: queryKeys.availability(partyId ?? '') })
       }
@@ -243,17 +244,41 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
         'postgres_changes',
         { event: '*', schema: 'public', table: 'availability' },
         (payload) => {
-          // Skip refresh during local mutations to prevent flash
-          if (mutatingRef.current) return
-
           const { eventType, new: newRecord, old: oldRecord } = payload
+
+          // Extract member ID and date from the record
+          const memberId = (newRecord as { party_member_id?: string })?.party_member_id ||
+                           (oldRecord as { party_member_id?: string })?.party_member_id
+          const date = (newRecord as { date?: string })?.date ||
+                       (oldRecord as { date?: string })?.date
+
+          if (!memberId || !date) return
+
+          // Check if we have a pending mutation for this (memberId, date)
+          const mutationKey = `${memberId}-${date}`
+          const pendingMutationTime = pendingMutationsRef.current.get(mutationKey)
+
+          if (pendingMutationTime) {
+            // Compare with the event's updated_at timestamp
+            const eventTime = (newRecord as { updated_at?: string })?.updated_at
+            if (eventTime) {
+              const eventTimestamp = new Date(eventTime).getTime()
+              // If the event is from our own mutation or older, skip it
+              // Allow a small buffer (100ms) for clock skew
+              if (eventTimestamp <= pendingMutationTime + 100) {
+                return
+              }
+            } else {
+              // For DELETE events, we don't have updated_at on newRecord
+              // Skip if we have a pending mutation (it's likely our own delete echoing back)
+              return
+            }
+          }
 
           updateCache((old) => {
             if (!old) return old
 
             // Only process if this availability belongs to a member in our party
-            const memberId = (newRecord as { party_member_id?: string })?.party_member_id ||
-                             (oldRecord as { party_member_id?: string })?.party_member_id
             const memberInParty = old.partyMembers.some((m) => m.id === memberId)
             if (!memberInParty) return old
 
