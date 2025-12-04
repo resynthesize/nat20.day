@@ -284,6 +284,80 @@
   font-style: italic;
 }
 
+/* Auth Divider */
+.signup-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin: var(--spacing-lg) 0;
+}
+
+.signup-auth-divider::before,
+.signup-auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.signup-auth-divider span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Email Sign-in Form */
+.signup-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.signup-email-form .signup-input {
+  text-align: center;
+}
+
+/* Email Sent State */
+.signup-email-sent {
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  background: var(--available-bg);
+  border: 1px solid var(--available);
+  border-radius: var(--radius-sm);
+}
+
+.signup-email-sent p:first-child {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--available);
+  margin-bottom: var(--spacing-xs);
+}
+
+.signup-email-sent-hint {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.signup-email-retry {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.signup-email-retry:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .signup-page {

@@ -10,6 +10,7 @@ import { Footer } from '../components/landing/Footer'
 
 type GameType = 'dnd' | 'mtg' | 'warhammer' | 'boardgames' | 'other'
 type SignupStep = 'details' | 'payment' | 'auth'
+type EmailState = 'idle' | 'sending' | 'sent'
 
 const GAME_TYPE_OPTIONS: { value: GameType; label: string; description: string }[] = [
   { value: 'dnd', label: 'D&D', description: 'Dungeons & Dragons' },
@@ -84,7 +85,7 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 const PENDING_SIGNUP_KEY = 'nat20-pending-signup'
 
 export function SignupPage() {
-  const { signInWithGoogle, signInWithDiscord } = useAuth()
+  const { signInWithGoogle, signInWithDiscord, signInWithEmail } = useAuth()
 
   const [step, setStep] = useState<SignupStep>('details')
   const [partyName, setPartyName] = useState('')
@@ -95,6 +96,8 @@ export function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [pendingSignupId, setPendingSignupId] = useState<string | null>(null)
+  const [emailState, setEmailState] = useState<EmailState>('idle')
+  const [authEmail, setAuthEmail] = useState('')
 
   // Check for existing pending signup on mount
   useEffect(() => {
@@ -225,6 +228,28 @@ export function SignupPage() {
       await signIn()
     } catch {
       setLoadingProvider(null)
+    }
+  }
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!pendingSignupId) {
+      setError('Signup session expired. Please start over.')
+      return
+    }
+
+    const trimmedEmail = authEmail.trim()
+    if (!trimmedEmail) return
+
+    setEmailState('sending')
+    setError(null)
+
+    const result = await signInWithEmail(trimmedEmail)
+    if (result.success) {
+      setEmailState('sent')
+    } else {
+      setEmailState('idle')
+      setError(result.error || 'Failed to send sign-in link')
     }
   }
 
@@ -379,18 +404,62 @@ export function SignupPage() {
                 </p>
               </div>
 
-              <div className="signup-auth-options">
-                <OAuthButton
-                  provider="google"
-                  onClick={() => handleOAuthClick('google', signInWithGoogle)}
-                  loading={loadingProvider === 'google'}
-                />
-                <OAuthButton
-                  provider="discord"
-                  onClick={() => handleOAuthClick('discord', signInWithDiscord)}
-                  loading={loadingProvider === 'discord'}
-                />
-              </div>
+              {emailState === 'sent' ? (
+                <div className="signup-email-sent">
+                  <p>Check your email for a sign-in link!</p>
+                  <p className="signup-email-sent-hint">
+                    We sent a link to <strong>{authEmail}</strong>
+                  </p>
+                  <button
+                    type="button"
+                    className="signup-email-retry"
+                    onClick={() => {
+                      setEmailState('idle')
+                      setAuthEmail('')
+                    }}
+                  >
+                    Use a different method
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="signup-auth-options">
+                    <OAuthButton
+                      provider="google"
+                      onClick={() => handleOAuthClick('google', signInWithGoogle)}
+                      loading={loadingProvider === 'google'}
+                    />
+                    <OAuthButton
+                      provider="discord"
+                      onClick={() => handleOAuthClick('discord', signInWithDiscord)}
+                      loading={loadingProvider === 'discord'}
+                    />
+                  </div>
+
+                  <div className="signup-auth-divider">
+                    <span>or</span>
+                  </div>
+
+                  <form onSubmit={handleEmailSubmit} className="signup-email-form">
+                    <input
+                      type="email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="signup-input"
+                      disabled={emailState === 'sending'}
+                      autoComplete="email"
+                    />
+                    <button
+                      type="submit"
+                      className="signup-button primary"
+                      disabled={emailState === 'sending' || !authEmail.trim()}
+                    >
+                      {emailState === 'sending' ? 'Sending...' : 'Send sign-in link'}
+                    </button>
+                  </form>
+                </>
+              )}
 
               <p className="signup-auth-note">
                 Already have an account? Your new party will be added to your existing account.
