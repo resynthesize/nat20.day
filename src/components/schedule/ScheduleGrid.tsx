@@ -4,6 +4,7 @@ import { useAvailability } from '../../hooks/useAvailability'
 import { useParty } from '../../hooks/useParty'
 import { AvailabilityGrid, type GridMember, type GridAvailability } from './AvailabilityGrid'
 import { ScheduleGridSkeleton } from './ScheduleGridSkeleton'
+import { SessionTracker } from './SessionTracker'
 
 export function ScheduleGrid() {
   const { user } = useAuth()
@@ -99,13 +100,16 @@ export function ScheduleGrid() {
   }
 
   return (
-    <AvailabilityGrid
-      members={members}
-      dates={dates}
-      availability={availability}
-      onToggle={handleToggle}
-      canEdit={canEdit}
-      showAdminBadge={isAdmin}
-    />
+    <>
+      <SessionTracker />
+      <AvailabilityGrid
+        members={members}
+        dates={dates}
+        availability={availability}
+        onToggle={handleToggle}
+        canEdit={canEdit}
+        showAdminBadge={isAdmin}
+      />
+    </>
   )
 }

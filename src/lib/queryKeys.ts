@@ -7,6 +7,9 @@ export const queryKeys = {
   // Availability (Supabase)
   availability: (partyId: string) => ['availability', partyId] as const,
 
+  // Sessions (Supabase)
+  sessions: (partyId: string) => ['sessions', partyId] as const,
+
   // Billing (Vercel API - conservative caching)
   subscription: (partyId: string) => ['billing', 'subscription', partyId] as const,
 

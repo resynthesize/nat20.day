@@ -97,6 +97,20 @@ export const AvailabilityWithMemberSchema = AvailabilitySchema.extend({
 export type AvailabilityWithMember = z.infer<typeof AvailabilityWithMemberSchema>
 
 // =============================================================================
+// Session Schemas
+// =============================================================================
+
+export const SessionSchema = z.object({
+  id: z.string(),
+  party_id: z.string(),
+  date: z.string(),
+  confirmed_by: z.string().nullable(),
+  confirmed_at: z.string(),
+})
+
+export type Session = z.infer<typeof SessionSchema>
+
+// =============================================================================
 // Parse Functions
 // =============================================================================
 
@@ -123,4 +137,9 @@ export const parseParties = (data: unknown): PartyWithAdmins[] => {
 export const parseParty = (data: unknown): PartyWithAdmins | null => {
   const result = PartyWithAdminsSchema.safeParse(data)
   return result.success ? result.data : null
+}
+
+export const parseSessions = (data: unknown): Session[] => {
+  const result = z.array(SessionSchema).safeParse(data)
+  return result.success ? result.data : []
 }
