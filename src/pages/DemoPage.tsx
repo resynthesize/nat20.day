@@ -7,10 +7,19 @@ import { LandingNav } from '../components/landing/LandingNav'
 
 const DEMO_PARTY_ID = 'party_DEMO0000'
 
-// Generate avatar URL using DiceBear's lorelei style (fantasy/D&D aesthetic)
-function generateAvatarUrl(name: string): string {
-  const seed = encodeURIComponent(name.toLowerCase().replace(/\s+/g, '-'))
-  return `https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}`
+// High-fantasy character portraits for demo members
+// Art by Ravenmore (CC-BY 3.0) - https://opengameart.org/content/fantasy-portrait-pack-by-ravenmore
+const DEMO_AVATARS: Record<string, string> = {
+  'aldric lightbringer': '/avatars/demo/aldric.png',
+  'elara moonwhisper': '/avatars/demo/elara.png',
+  'grimlock the bold': '/avatars/demo/grimlock.png',
+  'thorin ironforge': '/avatars/demo/thorin.png',
+  'zara shadowstep': '/avatars/demo/zara.png',
+}
+
+function getAvatarUrl(name: string): string {
+  const key = name.toLowerCase()
+  return DEMO_AVATARS[key] || `/avatars/demo/aldric.png`
 }
 
 export function DemoPage() {
@@ -53,12 +62,12 @@ export function DemoPage() {
           )
         }
 
-        // Transform to GridMember format with generated avatars
+        // Transform to GridMember format with fantasy portraits
         setMembers(
           (membersData || []).map(m => ({
             id: m.id,
             name: m.name,
-            avatarUrl: generateAvatarUrl(m.name),
+            avatarUrl: getAvatarUrl(m.name),
             isLinked: true, // Demo members are all "linked"
           }))
         )
