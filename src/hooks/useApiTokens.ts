@@ -1,43 +1,75 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-
-export interface ApiToken {
-  id: string
-  name: string
-  token_prefix: string
-  created_at: string
-  last_used_at: string | null
-}
+import { queryKeys } from '../lib/queryKeys'
+import { fetchApiTokens, type ApiToken } from '../lib/queries'
 
 interface UseApiTokensOptions {
   userId: string | null
 }
 
 export function useApiTokens({ userId }: UseApiTokensOptions) {
-  const [tokens, setTokens] = useState<ApiToken[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  // Fetch tokens on mount
-  const fetchTokens = useCallback(async () => {
-    if (!userId) {
-      setTokens([])
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
+  // Query for fetching tokens (Vercel API - conservative caching)
+  const {
+    data: tokens = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.apiTokens(userId ?? ''),
+    queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        throw new Error('Not authenticated')
-      }
+      if (!session) throw new Error('Not authenticated')
+      return fetchApiTokens(session.access_token)
+    },
+    enabled: !!userId,
+    // AGGRESSIVE caching for Vercel API - free tier limits
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 60 * 60 * 1000, // 1 hour
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  // Mutation for creating a token
+  const createMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
 
       const response = await fetch('/api/tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ name }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create token')
+      }
+
+      // Return the raw token (shown once to user)
+      return result.data.token as string
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.apiTokens(userId ?? '') })
+    },
+  })
+
+  // Mutation for deleting a token
+  const deleteMutation = useMutation({
+    mutationFn: async (tokenId: string) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const response = await fetch(`/api/tokens?id=${tokenId}`, {
+        method: 'DELETE',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -46,92 +78,37 @@ export function useApiTokens({ userId }: UseApiTokensOptions) {
       const result = await response.json()
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch tokens')
+        throw new Error(result.error || 'Failed to delete token')
       }
 
-      setTokens(result.data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch tokens'
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
-  }, [userId])
+      return tokenId
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.apiTokens(userId ?? '') })
+    },
+  })
 
-  useEffect(() => {
-    fetchTokens()
-  }, [fetchTokens])
-
-  // Create a new token
+  // Wrapper functions to maintain backward compatibility
   const createToken = useCallback(
     async (name: string): Promise<string | null> => {
-      setCreating(true)
       setError(null)
-
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          throw new Error('Not authenticated')
-        }
-
-        const response = await fetch('/api/tokens', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ name }),
-        })
-
-        const result = await response.json()
-
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to create token')
-        }
-
-        // Refresh the list
-        await fetchTokens()
-
-        // Return the raw token (shown once to user)
-        return result.data.token
+        return await createMutation.mutateAsync(name)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create token'
         setError(message)
         return null
-      } finally {
-        setCreating(false)
       }
     },
-    [fetchTokens]
+    [createMutation]
   )
 
-  // Delete a token
   const deleteToken = useCallback(
     async (tokenId: string): Promise<boolean> => {
       setDeleting(tokenId)
       setError(null)
-
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          throw new Error('Not authenticated')
-        }
-
-        const response = await fetch(`/api/tokens?id=${tokenId}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        })
-
-        const result = await response.json()
-
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to delete token')
-        }
-
-        // Refresh the list
-        await fetchTokens()
+        await deleteMutation.mutateAsync(tokenId)
         return true
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to delete token'
@@ -141,7 +118,7 @@ export function useApiTokens({ userId }: UseApiTokensOptions) {
         setDeleting(null)
       }
     },
-    [fetchTokens]
+    [deleteMutation]
   )
 
   const clearError = useCallback(() => {
@@ -152,11 +129,14 @@ export function useApiTokens({ userId }: UseApiTokensOptions) {
     tokens,
     loading,
     error,
-    creating,
+    creating: createMutation.isPending,
     deleting,
     createToken,
     deleteToken,
-    refetch: fetchTokens,
+    refetch,
     clearError,
   }
 }
+
+// Re-export type for convenience
+export type { ApiToken }

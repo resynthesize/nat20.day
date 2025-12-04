@@ -9,6 +9,7 @@ import { SignupPage } from './pages/SignupPage'
 import { OAuthConsentPage } from './pages/OAuthConsentPage'
 import { PartyProvider, useParty } from './hooks/useParty'
 import { ThemeProvider } from './hooks/useTheme'
+import { usePrefetchOnLogin } from './hooks/usePrefetchOnLogin'
 import { AuthTabs } from './components/auth/AuthTabs'
 import { ScheduleGrid } from './components/schedule/ScheduleGrid'
 import { ProfilePage } from './components/profile/ProfilePage'
@@ -37,6 +38,9 @@ function AuthenticatedApp() {
   const { user, profile, signOut } = useAuth()
   const { isAdmin, refreshParties } = useParty()
   const [showCreatePartyModal, setShowCreatePartyModal] = useState(false)
+
+  // Prefetch admin panel data for faster navigation
+  usePrefetchOnLogin()
   const [searchParams, setSearchParams] = useSearchParams()
   const [checkoutMessage, setCheckoutMessage] = useState<{ type: 'success' | 'canceled'; text: string } | null>(null)
 

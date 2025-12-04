@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useParty } from '../../hooks/useParty'
 import { useAuth } from '../../hooks/useAuth'
-import { parsePartyMembers, type PartyMember } from '../../lib/schemas'
+import { usePartyMembersQuery, useAddPartyMember, useRemovePartyMember } from '../../hooks/usePartyMembersQuery'
+import { usePartyAdminsQuery, usePromoteToAdmin, useRemoveAdmin } from '../../hooks/usePartyAdminsQuery'
+import { useSubscriptionQuery, useCancelSubscription, useReactivateSubscription } from '../../hooks/useSubscriptionQuery'
 import { UpdatePaymentModal } from './UpdatePaymentModal'
 import { ThemeSelector } from './ThemeSelector'
 
@@ -19,34 +21,36 @@ const DAY_LABELS = [
   { value: 6, label: 'Sat', fullLabel: 'Saturday' },
 ]
 
-interface AdminInfo {
-  profile_id: string
-  profiles: { id: string; display_name: string; avatar_url: string | null } | null
-}
-
-interface SubscriptionInfo {
-  id: string
-  party_id: string
-  status: 'active' | 'past_due' | 'canceled' | 'expired'
-  current_period_end: string
-  cancel_at_period_end: boolean
-}
-
 export function AdminPanel() {
   const { currentParty, isAdmin, refreshParties } = useParty()
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState<TabType>('members')
-  const [members, setMembers] = useState<PartyMember[]>([])
-  const [admins, setAdmins] = useState<AdminInfo[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // TanStack Query hooks for data fetching (cached!)
+  const { data: members = [], isLoading: loadingMembers } = usePartyMembersQuery(currentParty?.id)
+  const { data: admins = [], isLoading: loadingAdmins } = usePartyAdminsQuery(currentParty?.id)
+  const { data: subscription, isLoading: loadingSubscription, refetch: refetchSubscription } = useSubscriptionQuery(
+    currentParty?.id,
+    { enabled: activeTab === 'billing' }
+  )
+
+  // Mutations
+  const addMemberMutation = useAddPartyMember(currentParty?.id)
+  const removeMemberMutation = useRemovePartyMember(currentParty?.id)
+  const promoteToAdminMutation = usePromoteToAdmin(currentParty?.id)
+  const removeAdminMutation = useRemoveAdmin(currentParty?.id)
+  const cancelSubscriptionMutation = useCancelSubscription(currentParty?.id)
+  const reactivateSubscriptionMutation = useReactivateSubscription(currentParty?.id)
+
+  // Combined loading state for initial data
+  const loading = loadingMembers || loadingAdmins
 
   // Add member form
   const [newMemberName, setNewMemberName] = useState('')
   const [newMemberEmail, setNewMemberEmail] = useState('')
-  const [addingMember, setAddingMember] = useState(false)
 
   // Edit party name
   const [partyName, setPartyName] = useState(currentParty?.name || '')
@@ -58,14 +62,10 @@ export function AdminPanel() {
   )
   const [savingDays, setSavingDays] = useState(false)
 
-  // Billing
-  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
-  const [loadingSubscription, setLoadingSubscription] = useState(false)
+  // Billing UI state
   const [openingPortal, setOpeningPortal] = useState(false)
   const [showUpdatePayment, setShowUpdatePayment] = useState(false)
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null)
-  const [cancelingSubscription, setCancelingSubscription] = useState(false)
-  const [reactivatingSubscription, setReactivatingSubscription] = useState(false)
 
   // Redirect if not admin
   useEffect(() => {
@@ -74,71 +74,11 @@ export function AdminPanel() {
     }
   }, [isAdmin, loading, navigate])
 
-  const fetchData = useCallback(async () => {
-    if (!currentParty) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const [membersResult, adminsResult] = await Promise.all([
-        supabase
-          .from('party_members')
-          .select(`
-            id,
-            party_id,
-            name,
-            email,
-            profile_id,
-            created_at,
-            profiles (
-              display_name,
-              avatar_url
-            )
-          `)
-          .eq('party_id', currentParty.id)
-          .order('name'),
-        supabase
-          .from('party_admins')
-          .select(`
-            profile_id,
-            profiles (
-              id,
-              display_name,
-              avatar_url
-            )
-          `)
-          .eq('party_id', currentParty.id),
-      ])
-
-      if (membersResult.error) throw membersResult.error
-      if (adminsResult.error) throw adminsResult.error
-
-      // Normalize joined data - Supabase returns joined relations as arrays
-      const normalizedMembers = (membersResult.data ?? []).map((item) => ({
-        ...item,
-        profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
-      }))
-
-      const normalizedAdmins = (adminsResult.data ?? []).map((item) => ({
-        ...item,
-        profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
-      }))
-
-      setMembers(parsePartyMembers(normalizedMembers))
-      setAdmins(normalizedAdmins as AdminInfo[])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }, [currentParty])
-
+  // Sync form state with currentParty changes
   useEffect(() => {
-    fetchData()
     setPartyName(currentParty?.name || '')
     setSelectedDays(currentParty?.days_of_week ?? [5, 6])
-  }, [fetchData, currentParty?.name, currentParty?.days_of_week])
+  }, [currentParty?.name, currentParty?.days_of_week])
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -157,25 +97,14 @@ export function AdminPanel() {
       return
     }
 
-    setAddingMember(true)
     setError(null)
 
     try {
-      const { error: insertError } = await supabase.from('party_members').insert({
-        party_id: currentParty.id,
-        name: trimmedName,
-        email: trimmedEmail,
-      })
-
-      if (insertError) throw insertError
-
+      await addMemberMutation.mutateAsync({ name: trimmedName, email: trimmedEmail })
       setNewMemberName('')
       setNewMemberEmail('')
-      await fetchData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add member')
-    } finally {
-      setAddingMember(false)
     }
   }
 
@@ -184,14 +113,7 @@ export function AdminPanel() {
     if (!confirm(`Remove ${memberName} from the party?`)) return
 
     try {
-      const { error: deleteError } = await supabase
-        .from('party_members')
-        .delete()
-        .eq('id', memberId)
-        .eq('party_id', currentParty.id)
-
-      if (deleteError) throw deleteError
-      await fetchData()
+      await removeMemberMutation.mutateAsync(memberId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove member')
     }
@@ -201,13 +123,7 @@ export function AdminPanel() {
     if (!currentParty) return
 
     try {
-      const { error: insertError } = await supabase.from('party_admins').insert({
-        party_id: currentParty.id,
-        profile_id: profileId,
-      })
-
-      if (insertError) throw insertError
-      await fetchData()
+      await promoteToAdminMutation.mutateAsync(profileId)
       await refreshParties()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to promote to admin')
@@ -223,14 +139,7 @@ export function AdminPanel() {
     }
 
     try {
-      const { error: deleteError } = await supabase
-        .from('party_admins')
-        .delete()
-        .eq('party_id', currentParty.id)
-        .eq('profile_id', profileId)
-
-      if (deleteError) throw deleteError
-      await fetchData()
+      await removeAdminMutation.mutateAsync(profileId)
       await refreshParties()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove admin')
@@ -308,40 +217,6 @@ export function AdminPanel() {
 
   const isUserAdmin = (profileId: string) => admins.some((a) => a.profile_id === profileId)
 
-  // Fetch subscription when billing tab is active
-  const fetchSubscription = useCallback(async () => {
-    if (!currentParty) return
-
-    setLoadingSubscription(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`/api/v1/billing/subscription?party_id=${currentParty.id}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setSubscription(data)
-      } else if (response.status === 404) {
-        setSubscription(null)
-      }
-    } catch (err) {
-      console.error('Failed to fetch subscription:', err)
-    } finally {
-      setLoadingSubscription(false)
-    }
-  }, [currentParty])
-
-  useEffect(() => {
-    if (activeTab === 'billing') {
-      fetchSubscription()
-    }
-  }, [activeTab, fetchSubscription])
-
   const handleOpenBillingPortal = async () => {
     if (!currentParty) return
 
@@ -416,72 +291,24 @@ export function AdminPanel() {
       return
     }
 
-    setCancelingSubscription(true)
     setError(null)
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setError('You must be logged in')
-        return
-      }
-
-      const response = await fetch('/api/v1/billing/cancel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ party_id: currentParty.id }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.message || 'Failed to cancel subscription')
-      }
-
-      // Refresh subscription status
-      await fetchSubscription()
+      await cancelSubscriptionMutation.mutateAsync()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel subscription')
-    } finally {
-      setCancelingSubscription(false)
     }
   }
 
   const handleReactivateSubscription = async () => {
     if (!currentParty) return
 
-    setReactivatingSubscription(true)
     setError(null)
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setError('You must be logged in')
-        return
-      }
-
-      const response = await fetch('/api/v1/billing/reactivate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ party_id: currentParty.id }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.message || 'Failed to reactivate subscription')
-      }
-
-      // Refresh subscription status
-      await fetchSubscription()
+      await reactivateSubscriptionMutation.mutateAsync()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reactivate subscription')
-    } finally {
-      setReactivatingSubscription(false)
     }
   }
 
@@ -560,7 +387,7 @@ export function AdminPanel() {
                   onChange={(e) => setNewMemberName(e.target.value)}
                   placeholder="Name"
                   className="form-input"
-                  disabled={addingMember}
+                  disabled={addMemberMutation.isPending}
                 />
                 <input
                   type="email"
@@ -568,14 +395,14 @@ export function AdminPanel() {
                   onChange={(e) => setNewMemberEmail(e.target.value)}
                   placeholder="Email (optional)"
                   className="form-input"
-                  disabled={addingMember}
+                  disabled={addMemberMutation.isPending}
                 />
                 <button
                   type="submit"
                   className="form-button"
-                  disabled={addingMember || !newMemberName.trim()}
+                  disabled={addMemberMutation.isPending || !newMemberName.trim()}
                 >
-                  {addingMember ? 'Adding...' : 'Add'}
+                  {addMemberMutation.isPending ? 'Adding...' : 'Add'}
                 </button>
               </div>
               <p className="form-hint">
@@ -800,18 +627,18 @@ export function AdminPanel() {
                             type="button"
                             className="billing-action-button reactivate"
                             onClick={handleReactivateSubscription}
-                            disabled={reactivatingSubscription}
+                            disabled={reactivateSubscriptionMutation.isPending}
                           >
-                            {reactivatingSubscription ? 'Reactivating...' : 'Reactivate Subscription'}
+                            {reactivateSubscriptionMutation.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
                           </button>
                         ) : (
                           <button
                             type="button"
                             className="billing-action-button cancel"
                             onClick={handleCancelSubscription}
-                            disabled={cancelingSubscription}
+                            disabled={cancelSubscriptionMutation.isPending}
                           >
-                            {cancelingSubscription ? 'Canceling...' : 'Cancel Subscription'}
+                            {cancelSubscriptionMutation.isPending ? 'Canceling...' : 'Cancel Subscription'}
                           </button>
                         )}
 
@@ -847,7 +674,7 @@ export function AdminPanel() {
           setSetupIntentSecret(null)
         }}
         clientSecret={setupIntentSecret}
-        onSuccess={fetchSubscription}
+        onSuccess={() => refetchSubscription()}
       />
     </div>
   )

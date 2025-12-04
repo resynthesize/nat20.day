@@ -1,19 +1,19 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { parseParties, type PartyWithAdmins } from '../lib/schemas'
+import { queryKeys } from '../lib/queryKeys'
+import { fetchParties } from '../lib/queries'
+import { type PartyWithAdmins } from '../lib/schemas'
 import { useAuth } from './useAuth'
 
 const STORAGE_KEY = 'nat20-current-party'
 
-interface PartyState {
+interface PartyContextValue {
   parties: PartyWithAdmins[]
   currentParty: PartyWithAdmins | null
   loading: boolean
   error: string | null
-}
-
-interface PartyContextValue extends PartyState {
   setCurrentParty: (partyId: string) => void
   isAdmin: boolean
   refreshParties: (options?: { selectNewest?: boolean }) => Promise<void>
@@ -44,158 +44,164 @@ function storePartyId(partyId: string | null): void {
 
 export function PartyProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth()
+  const queryClient = useQueryClient()
 
-  const [state, setState] = useState<PartyState>({
-    parties: [],
-    currentParty: null,
-    loading: true,
-    error: null,
+  // Local state for current party selection (UI state, not server state)
+  const [currentPartyId, setCurrentPartyId] = useState<string | null>(() => getStoredPartyId())
+
+  // TanStack Query for fetching parties (Supabase - no limit concerns)
+  const {
+    data: parties = [],
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.parties(user?.id ?? ''),
+    queryFn: () => fetchParties(user!.id),
+    enabled: isAuthenticated && !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
-  const fetchParties = useCallback(async (): Promise<PartyWithAdmins[]> => {
-    if (!user) return []
+  // Compute currentParty from parties list and currentPartyId
+  const currentParty = parties.find((p) => p.id === currentPartyId) ?? null
 
-    const { data, error } = await supabase
-      .from('parties')
-      .select(`
-        id,
-        name,
-        created_at,
-        is_demo,
-        days_of_week,
-        theme,
-        party_admins (
-          profile_id
-        )
-      `)
-      .eq('is_demo', false)  // Exclude demo parties from user's party list
-      .order('name')
+  // When parties load and no currentParty is selected, select the first one
+  useEffect(() => {
+    if (parties.length === 0) return
 
-    if (error) return []
-
-    return parseParties(data)
-  }, [user])
-
-  const refreshParties = useCallback(async (options?: { selectNewest?: boolean }) => {
-    if (!isAuthenticated) {
-      setState({ parties: [], currentParty: null, loading: false, error: null })
+    // If current selection is valid, keep it
+    if (currentPartyId && parties.some((p) => p.id === currentPartyId)) {
       return
     }
 
-    setState((s) => ({ ...s, loading: true, error: null }))
+    // Otherwise select first party
+    const storedId = getStoredPartyId()
+    const partyToSelect = (storedId && parties.find((p) => p.id === storedId)) || parties[0]
 
-    const parties = await fetchParties()
-    const storedPartyId = getStoredPartyId()
-
-    // Find the current party to select
-    let currentParty: PartyWithAdmins | null = null
-
-    if (options?.selectNewest && parties.length > 0) {
-      // Select the most recently created party (for post-checkout)
-      currentParty = [...parties].sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )[0]
-      storePartyId(currentParty.id)
-    } else if (storedPartyId) {
-      currentParty = parties.find((p) => p.id === storedPartyId) ?? null
+    if (partyToSelect) {
+      setCurrentPartyId(partyToSelect.id)
+      storePartyId(partyToSelect.id)
     }
+  }, [parties, currentPartyId])
 
-    if (!currentParty && parties.length > 0) {
-      currentParty = parties[0]
-      storePartyId(currentParty.id)
-    }
-
-    setState({ parties, currentParty, loading: false, error: null })
-  }, [isAuthenticated, fetchParties])
-
-  // Fetch parties when user changes
+  // Clear state when user logs out
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: fetch on mount
-    refreshParties()
-  }, [refreshParties])
+    if (!isAuthenticated) {
+      setCurrentPartyId(null)
+    }
+  }, [isAuthenticated])
 
   const setCurrentParty = useCallback((partyId: string) => {
-    setState((s) => {
-      const party = s.parties.find((p) => p.id === partyId) ?? null
-      if (party) {
-        storePartyId(partyId)
-      }
-      return { ...s, currentParty: party }
-    })
+    setCurrentPartyId(partyId)
+    storePartyId(partyId)
   }, [])
 
+  // refreshParties wrapper that handles selectNewest option
+  const refreshParties = useCallback(async (options?: { selectNewest?: boolean }) => {
+    if (!isAuthenticated) {
+      setCurrentPartyId(null)
+      return
+    }
+
+    const result = await refetch()
+    const updatedParties = result.data ?? []
+
+    if (options?.selectNewest && updatedParties.length > 0) {
+      // Select the most recently created party (for post-checkout)
+      const newest = [...updatedParties].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0]
+      setCurrentPartyId(newest.id)
+      storePartyId(newest.id)
+    }
+  }, [isAuthenticated, refetch])
+
+  // Create party mutation
+  const createPartyMutation = useMutation({
+    mutationFn: async (name: string): Promise<PartyWithAdmins | null> => {
+      if (!user) return null
+
+      // 1. Create the party
+      const { data: party, error: partyError } = await supabase
+        .from('parties')
+        .insert({ name })
+        .select()
+        .single()
+
+      if (partyError || !party) {
+        console.error('Error creating party:', partyError)
+        return null
+      }
+
+      // 2. Add creator as admin
+      const { error: adminError } = await supabase
+        .from('party_admins')
+        .insert({ party_id: party.id, profile_id: user.id })
+
+      if (adminError) {
+        console.error('Error adding admin:', adminError)
+        await supabase.from('parties').delete().eq('id', party.id)
+        return null
+      }
+
+      // 3. Add creator as member
+      const { error: memberError } = await supabase
+        .from('party_members')
+        .insert({
+          party_id: party.id,
+          name: user.user_metadata?.full_name || user.email || 'Unknown',
+          email: user.email,
+          profile_id: user.id,
+        })
+
+      if (memberError) {
+        console.error('Error adding member:', memberError)
+        await supabase.from('party_admins').delete().eq('party_id', party.id)
+        await supabase.from('parties').delete().eq('id', party.id)
+        return null
+      }
+
+      return party as unknown as PartyWithAdmins
+    },
+    onSuccess: async (newParty) => {
+      // Invalidate and refetch parties
+      await queryClient.invalidateQueries({ queryKey: queryKeys.parties(user?.id ?? '') })
+
+      // Set the new party as current
+      if (newParty) {
+        setCurrentPartyId(newParty.id)
+        storePartyId(newParty.id)
+      }
+    },
+  })
+
   const createParty = useCallback(async (name: string): Promise<PartyWithAdmins | null> => {
-    if (!user) return null
+    const result = await createPartyMutation.mutateAsync(name)
 
-    // Start a transaction-like operation:
-    // 1. Create the party
-    const { data: party, error: partyError } = await supabase
-      .from('parties')
-      .insert({ name })
-      .select()
-      .single()
-
-    if (partyError || !party) {
-      console.error('Error creating party:', partyError)
-      return null
+    // After mutation success, we need to get the full party with admins from the refetched data
+    if (result) {
+      // The parties query should have been invalidated, wait a tick for it to update
+      const latestParties = queryClient.getQueryData<PartyWithAdmins[]>(queryKeys.parties(user?.id ?? ''))
+      return latestParties?.find((p) => p.id === result.id) ?? null
     }
 
-    // 2. Add creator as admin
-    const { error: adminError } = await supabase
-      .from('party_admins')
-      .insert({ party_id: party.id, profile_id: user.id })
-
-    if (adminError) {
-      console.error('Error adding admin:', adminError)
-      // Try to clean up the party
-      await supabase.from('parties').delete().eq('id', party.id)
-      return null
-    }
-
-    // 3. Add creator as member
-    const { error: memberError } = await supabase
-      .from('party_members')
-      .insert({
-        party_id: party.id,
-        name: user.user_metadata?.full_name || user.email || 'Unknown',
-        email: user.email,
-        profile_id: user.id,
-      })
-
-    if (memberError) {
-      console.error('Error adding member:', memberError)
-      // Clean up
-      await supabase.from('party_admins').delete().eq('party_id', party.id)
-      await supabase.from('parties').delete().eq('id', party.id)
-      return null
-    }
-
-    // Refresh parties and set the new one as current
-    const updatedParties = await fetchParties()
-    const newParty = updatedParties.find((p) => p.id === party.id) ?? null
-
-    if (newParty) {
-      storePartyId(newParty.id)
-      setState({
-        parties: updatedParties,
-        currentParty: newParty,
-        loading: false,
-        error: null,
-      })
-    }
-
-    return newParty
-  }, [user, fetchParties])
+    return null
+  }, [createPartyMutation, queryClient, user?.id])
 
   // Compute isAdmin based on current party and user
   const isAdmin = !!(
     user &&
-    state.currentParty &&
-    state.currentParty.party_admins.some((admin) => admin.profile_id === user.id)
+    currentParty &&
+    currentParty.party_admins.some((admin) => admin.profile_id === user.id)
   )
 
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to load parties') : null
+
   const value: PartyContextValue = {
-    ...state,
+    parties,
+    currentParty,
+    loading,
+    error,
     setCurrentParty,
     isAdmin,
     refreshParties,
