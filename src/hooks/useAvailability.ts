@@ -21,7 +21,8 @@ interface UseAvailabilityOptions {
   daysOfWeek?: number[]
 }
 
-async function fetchAvailabilityData(
+// Exported for prefetching
+export async function fetchAvailabilityData(
   partyId: string,
   daysOfWeek?: number[]
 ): Promise<AvailabilityData> {
