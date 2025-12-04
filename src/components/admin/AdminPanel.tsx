@@ -507,7 +507,7 @@ export function AdminPanel() {
     return (
       <div className="admin-panel">
         <p className="error">No party selected</p>
-        <Link to="/" className="back-link">← Back to Schedule</Link>
+        <Link to="/app" className="back-link">← Back to Schedule</Link>
       </div>
     )
   }
@@ -515,7 +515,7 @@ export function AdminPanel() {
   return (
     <div className="admin-panel">
       <div className="admin-header">
-        <Link to="/" className="back-link">← Back to Schedule</Link>
+        <Link to="/app" className="back-link">← Back to Schedule</Link>
         <h2>Party Settings</h2>
         <p className="admin-subtitle">{currentParty.name}</p>
       </div>

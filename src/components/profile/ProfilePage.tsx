@@ -49,7 +49,7 @@ export function ProfilePage() {
   return (
     <div className="profile-page">
       <div className="profile-header">
-        <Link to="/" className="back-link">
+        <Link to="/app" className="back-link">
           &larr; Back to Schedule
         </Link>
         <h2>Edit Profile</h2>
