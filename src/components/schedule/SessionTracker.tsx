@@ -47,29 +47,35 @@ export function SessionTracker() {
   // Don't render while loading
   if (loading) return null
 
-  const flavorText = getSessionFlavorText(daysSinceLastSession)
   const hasPlayed = daysSinceLastSession !== null
+
+  // Only show the tracker if there's something to show:
+  // - A past session exists (show days since)
+  // - OR a suggested date exists (prompt to confirm)
+  if (!hasPlayed && !suggestedDate) return null
+
+  const flavorText = getSessionFlavorText(daysSinceLastSession)
 
   return (
     <div className="session-tracker">
-      <div className="session-tracker-header">
-        <span className="session-tracker-icon">🎲</span>
-        {hasPlayed ? (
-          <span className="session-tracker-days">
-            {daysSinceLastSession === 0
-              ? 'Played today!'
-              : daysSinceLastSession === 1
-                ? '1 day since last session'
-                : `${daysSinceLastSession} days since last session`}
-          </span>
-        ) : (
-          <span className="session-tracker-days">No sessions logged yet</span>
-        )}
-      </div>
-      <p className="session-tracker-flavor">"{flavorText}"</p>
+      {hasPlayed && (
+        <>
+          <div className="session-tracker-header">
+            <span className="session-tracker-icon">🎲</span>
+            <span className="session-tracker-days">
+              {daysSinceLastSession === 0
+                ? 'Played today!'
+                : daysSinceLastSession === 1
+                  ? '1 day since last session'
+                  : `${daysSinceLastSession} days since last session`}
+            </span>
+          </div>
+          <p className="session-tracker-flavor">"{flavorText}"</p>
+        </>
+      )}
 
       {suggestedDate && (
-        <div className="session-tracker-suggest">
+        <div className={`session-tracker-suggest ${hasPlayed ? '' : 'session-tracker-suggest-only'}`}>
           <span className="session-tracker-suggest-text">
             Did you play on {getDayOfWeek(suggestedDate)}, {formatDateDisplay(suggestedDate)}?
           </span>
