@@ -15,6 +15,7 @@ export const ProfileSchema = z.object({
   id: z.string(),
   display_name: z.string(),
   avatar_url: z.string().nullable(),
+  address: z.string().nullable().optional(),
   created_at: z.string(),
 })
 
@@ -23,6 +24,7 @@ export type Profile = z.infer<typeof ProfileSchema>
 const ProfileJoinSchema = z.object({
   display_name: z.string(),
   avatar_url: z.string().nullable(),
+  address: z.string().nullable().optional(),
 })
 
 // =============================================================================
@@ -35,6 +37,8 @@ export const PartySchema = z.object({
   created_at: z.string(),
   days_of_week: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
   theme: ThemeIdSchema.optional().default('dnd'),
+  default_host_member_id: z.string().nullable().optional(),
+  default_host_location: z.string().nullable().optional(),
 })
 
 export type Party = z.infer<typeof PartySchema>
@@ -106,9 +110,26 @@ export const SessionSchema = z.object({
   date: z.string(),
   confirmed_by: z.string().nullable(),
   confirmed_at: z.string(),
+  host_member_id: z.string().nullable().optional(),
+  host_location: z.string().nullable().optional(),
+  host_address: z.string().nullable().optional(),
+  is_virtual: z.boolean().optional().default(false),
 })
 
 export type Session = z.infer<typeof SessionSchema>
+
+// Session with host member details (for display)
+const HostMemberJoinSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  profiles: ProfileJoinSchema.nullable().optional(),
+})
+
+export const SessionWithHostSchema = SessionSchema.extend({
+  host_member: HostMemberJoinSchema.nullable().optional(),
+})
+
+export type SessionWithHost = z.infer<typeof SessionWithHostSchema>
 
 // =============================================================================
 // Parse Functions
@@ -142,4 +163,14 @@ export const parseParty = (data: unknown): PartyWithAdmins | null => {
 export const parseSessions = (data: unknown): Session[] => {
   const result = z.array(SessionSchema).safeParse(data)
   return result.success ? result.data : []
+}
+
+export const parseSessionsWithHost = (data: unknown): SessionWithHost[] => {
+  const result = z.array(SessionWithHostSchema).safeParse(data)
+  return result.success ? result.data : []
+}
+
+export const parseSessionWithHost = (data: unknown): SessionWithHost | null => {
+  const result = SessionWithHostSchema.safeParse(data)
+  return result.success ? result.data : null
 }

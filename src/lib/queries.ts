@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { supabase } from './supabase'
 import { parseParties, parsePartyMembers, type PartyWithAdmins, type PartyMember } from './schemas'
 
@@ -32,10 +33,16 @@ export async function fetchParties(userId: string): Promise<PartyWithAdmins[]> {
   return parseParties(data)
 }
 
-export interface AdminInfo {
-  profile_id: string
-  profiles: { id: string; display_name: string; avatar_url: string | null } | null
-}
+const AdminInfoSchema = z.object({
+  profile_id: z.string(),
+  profiles: z.object({
+    id: z.string(),
+    display_name: z.string(),
+    avatar_url: z.string().nullable(),
+  }).nullable(),
+})
+
+export type AdminInfo = z.infer<typeof AdminInfoSchema>
 
 export async function fetchPartyMembers(partyId: string): Promise<PartyMember[]> {
   if (!partyId) return []
@@ -91,11 +98,14 @@ export async function fetchPartyAdmins(partyId: string): Promise<AdminInfo[]> {
     throw error
   }
 
-  // Normalize joined data
-  return (data ?? []).map((item) => ({
+  // Normalize joined data and validate with Zod
+  const normalized = (data ?? []).map((item) => ({
     ...item,
     profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
-  })) as AdminInfo[]
+  }))
+
+  const result = z.array(AdminInfoSchema).safeParse(normalized)
+  return result.success ? result.data : []
 }
 
 // ============================================================================

@@ -112,6 +112,37 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
     [userId, onSuccess]
   )
 
+  const updateAddress = useCallback(
+    async (address: string | null) => {
+      if (!userId) {
+        setError('Not authenticated')
+        return false
+      }
+
+      setSaving(true)
+      setError(null)
+
+      try {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ address: address?.trim() || null })
+          .eq('id', userId)
+
+        if (updateError) throw updateError
+
+        onSuccess?.()
+        return true
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to update address'
+        setError(message)
+        return false
+      } finally {
+        setSaving(false)
+      }
+    },
+    [userId, onSuccess]
+  )
+
   const clearError = useCallback(() => {
     setError(null)
   }, [])
@@ -119,6 +150,7 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
   return {
     uploadAvatar,
     updateDisplayName,
+    updateAddress,
     uploading,
     saving,
     error,

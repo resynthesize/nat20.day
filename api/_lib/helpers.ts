@@ -73,7 +73,7 @@ export function requirePartyMember(
           .select("id")
           .eq("party_id", partyId)
           .eq("profile_id", profileId)
-          .single(),
+          .single<{ id: string }>(),
       catch: () => new InternalError({ message: "Database error" }),
     }),
     Effect.flatMap(({ data, error }) => {
@@ -82,9 +82,17 @@ export function requirePartyMember(
           new Forbidden({ message: "Not a member of this party" })
         )
       }
-      return Effect.succeed(data.id as string)
+      return Effect.succeed(data.id)
     })
   )
+}
+
+/**
+ * Subscription fields returned by getPartySubscription
+ */
+export interface PartySubscriptionData {
+  stripe_customer_id: string
+  stripe_subscription_id: string
 }
 
 /**
@@ -98,19 +106,18 @@ export function requirePartyMember(
  * // subscription.stripe_customer_id, etc.
  * ```
  */
-export function getPartySubscription<T extends string>(
+export function getPartySubscription(
   db: SupabaseClient,
-  partyId: string,
-  select: T = "stripe_customer_id, stripe_subscription_id" as T
-): Effect.Effect<Record<string, unknown>, NotFound | InternalError> {
+  partyId: string
+): Effect.Effect<PartySubscriptionData, NotFound | InternalError> {
   return pipe(
     Effect.tryPromise({
       try: () =>
         db
           .from("subscriptions")
-          .select(select)
+          .select("stripe_customer_id, stripe_subscription_id")
           .eq("party_id", partyId)
-          .single(),
+          .single<PartySubscriptionData>(),
       catch: () => new InternalError({ message: "Database error" }),
     }),
     Effect.flatMap(({ data, error }) => {
@@ -119,7 +126,7 @@ export function getPartySubscription<T extends string>(
           new NotFound({ message: "No subscription found for this party" })
         )
       }
-      return Effect.succeed(data as Record<string, unknown>)
+      return Effect.succeed(data)
     })
   )
 }

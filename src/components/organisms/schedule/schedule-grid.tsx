@@ -2,7 +2,8 @@ import { useMemo, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useAvailability } from '@/hooks/useAvailability'
 import { useParty } from '@/hooks/useParty'
-import { AvailabilityGrid, type GridMember, type GridAvailability } from './availability-grid'
+import { useSessions } from '@/hooks/useSessions'
+import { AvailabilityGrid, type GridMember, type GridAvailability, type ScheduledSession } from './availability-grid'
 import { ScheduleGridSkeleton } from './schedule-grid-skeleton'
 import { SessionTracker } from './session-tracker'
 
@@ -12,6 +13,7 @@ export function ScheduleGrid() {
   const {
     dates,
     partyMembers,
+    availability: availabilityData,
     loading,
     error,
     getAvailability,
@@ -20,6 +22,19 @@ export function ScheduleGrid() {
   } = useAvailability({
     partyId: currentParty?.id ?? null,
     daysOfWeek: currentParty?.days_of_week,
+  })
+
+  // Transform availability data for useSessions
+  const availabilityForSessions = availabilityData.map((a) => ({
+    memberId: a.party_member_id,
+    date: a.date,
+    available: a.available,
+  }))
+
+  const { sessions } = useSessions({
+    partyId: currentParty?.id ?? null,
+    availability: availabilityForSessions,
+    memberCount: partyMembers.length,
   })
 
   // Memoize member transformation - only recalculates when partyMembers or user changes
@@ -52,6 +67,14 @@ export function ScheduleGrid() {
     }
     return result
   }, [partyMembers, dates, getAvailability])
+
+  // Memoize scheduled sessions for grid display
+  const scheduledSessions: ScheduledSession[] = useMemo(() => {
+    return sessions.map((s) => ({
+      date: s.date,
+      hostName: s.host_member?.profiles?.display_name || s.host_location || null,
+    }))
+  }, [sessions])
 
   // Memoize toggle handler - stable reference for AvailabilityGrid
   const handleToggle = useCallback(
@@ -109,6 +132,7 @@ export function ScheduleGrid() {
         onToggle={handleToggle}
         canEdit={canEdit}
         showAdminBadge={isAdmin}
+        scheduledSessions={scheduledSessions}
       />
     </>
   )

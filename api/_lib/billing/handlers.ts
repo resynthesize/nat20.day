@@ -28,7 +28,7 @@ import {
   cancelSubscriptionAtPeriodEnd,
   reactivateSubscription,
   createSubscriptionWithPaymentIntent,
-} from "./stripe.js"
+} from "../stripe/operations.js"
 import { CurrentUser, AuthenticationLive, CurrentUserStub } from "../handlers/index.js"
 import {
   requirePartyAdmin,
@@ -139,11 +139,11 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_customer_id")
+        const subscription = yield* getPartySubscription(db, payload.party_id)
 
         // Create Stripe Billing Portal session
         const returnUrl = `${process.env.VITE_SUPABASE_URL ? "https://nat20.day" : "http://localhost:5173"}/app/admin`
-        const session = yield* createPortalSession(subscription.stripe_customer_id as string, returnUrl)
+        const session = yield* createPortalSession(subscription.stripe_customer_id, returnUrl)
 
         return new PortalSession({
           portal_url: session.url,
@@ -161,10 +161,10 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_customer_id")
+        const subscription = yield* getPartySubscription(db, payload.party_id)
 
         // Create Stripe Customer Session for embedded portal
-        const session = yield* createCustomerSession(subscription.stripe_customer_id as string)
+        const session = yield* createCustomerSession(subscription.stripe_customer_id)
 
         return new CustomerSession({
           client_secret: session.client_secret,
@@ -244,10 +244,10 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_customer_id")
+        const subscription = yield* getPartySubscription(db, payload.party_id)
 
         // Create Stripe SetupIntent
-        const setupIntent = yield* createSetupIntent(subscription.stripe_customer_id as string)
+        const setupIntent = yield* createSetupIntent(subscription.stripe_customer_id)
 
         return new SetupIntent({
           client_secret: setupIntent.client_secret!,
@@ -265,10 +265,10 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_subscription_id")
+        const subscription = yield* getPartySubscription(db, payload.party_id)
 
         // Cancel subscription at period end
-        const updated = yield* cancelSubscriptionAtPeriodEnd(subscription.stripe_subscription_id as string)
+        const updated = yield* cancelSubscriptionAtPeriodEnd(subscription.stripe_subscription_id)
 
         // Get current period end from subscription items
         const firstItem = updated.items?.data?.[0]
@@ -291,10 +291,10 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         yield* requirePartyAdmin(db, payload.party_id, user.profileId)
 
         // Get the subscription for this party
-        const subscription = yield* getPartySubscription(db, payload.party_id, "stripe_subscription_id")
+        const subscription = yield* getPartySubscription(db, payload.party_id)
 
         // Reactivate subscription
-        const updated = yield* reactivateSubscription(subscription.stripe_subscription_id as string)
+        const updated = yield* reactivateSubscription(subscription.stripe_subscription_id)
 
         // Get current period end from subscription items
         const firstItem = updated.items?.data?.[0]

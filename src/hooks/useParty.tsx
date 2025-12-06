@@ -137,17 +137,17 @@ export function PartyProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, refetch])
 
-  // Create party mutation
+  // Create party mutation - returns party ID on success
   const createPartyMutation = useMutation({
-    mutationFn: async (name: string): Promise<PartyWithAdmins | null> => {
+    mutationFn: async (name: string): Promise<{ id: string } | null> => {
       if (!user) return null
 
       // 1. Create the party
       const { data: party, error: partyError } = await supabase
         .from('parties')
         .insert({ name })
-        .select()
-        .single()
+        .select('id')
+        .single<{ id: string }>()
 
       if (partyError || !party) {
         console.error('Error creating party:', partyError)
@@ -182,7 +182,7 @@ export function PartyProvider({ children }: { children: ReactNode }) {
         return null
       }
 
-      return party as unknown as PartyWithAdmins
+      return { id: party.id }
     },
     onSuccess: async (newParty) => {
       // Invalidate and refetch parties

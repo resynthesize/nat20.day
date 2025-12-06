@@ -1,6 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
 import { generateToken } from './_lib/crypto.js'
+
+// Request body schema for POST
+const CreateTokenBodySchema = z.object({
+  name: z.string().min(1).max(100),
+})
+
+// Query params schema for DELETE
+const DeleteTokenQuerySchema = z.object({
+  id: z.string().uuid(),
+})
 
 /**
  * Token Management API
@@ -51,16 +62,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // POST /api/tokens - Create new token
     if (req.method === 'POST') {
-      const { name } = req.body as { name?: string }
-
-      if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        return res.status(400).json({ success: false, error: 'Token name is required' })
+      const parsed = CreateTokenBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({ success: false, error: 'Token name is required (1-100 chars)' })
       }
 
-      if (name.length > 100) {
-        return res.status(400).json({ success: false, error: 'Token name too long (max 100 chars)' })
-      }
-
+      const { name } = parsed.data
       const { raw, hash, prefix } = generateToken()
 
       const { error: insertError } = await supabase.from('api_tokens').insert({
@@ -104,12 +111,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // DELETE /api/tokens?id=xxx - Delete token
     if (req.method === 'DELETE') {
-      const tokenId = req.query.id as string
-
-      if (!tokenId) {
-        return res.status(400).json({ success: false, error: 'Token ID required' })
+      const parsed = DeleteTokenQuerySchema.safeParse(req.query)
+      if (!parsed.success) {
+        return res.status(400).json({ success: false, error: 'Valid token ID required' })
       }
 
+      const tokenId = parsed.data.id
       const { error: deleteError } = await supabase
         .from('api_tokens')
         .delete()

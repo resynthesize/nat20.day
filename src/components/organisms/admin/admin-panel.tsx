@@ -63,6 +63,12 @@ export function AdminPanel() {
   )
   const [savingDays, setSavingDays] = useState(false)
 
+  // Default host settings
+  const [defaultHostType, setDefaultHostType] = useState<'none' | 'member' | 'location'>('none')
+  const [defaultHostMemberId, setDefaultHostMemberId] = useState<string>('')
+  const [defaultHostLocation, setDefaultHostLocation] = useState<string>('')
+  const [savingHost, setSavingHost] = useState(false)
+
   // Billing UI state
   const [openingPortal, setOpeningPortal] = useState(false)
   const [showUpdatePayment, setShowUpdatePayment] = useState(false)
@@ -79,7 +85,22 @@ export function AdminPanel() {
   useEffect(() => {
     setPartyName(currentParty?.name || '')
     setSelectedDays(currentParty?.days_of_week ?? [5, 6])
-  }, [currentParty?.name, currentParty?.days_of_week])
+
+    // Sync host settings
+    if (currentParty?.default_host_member_id) {
+      setDefaultHostType('member')
+      setDefaultHostMemberId(currentParty.default_host_member_id)
+      setDefaultHostLocation('')
+    } else if (currentParty?.default_host_location) {
+      setDefaultHostType('location')
+      setDefaultHostMemberId('')
+      setDefaultHostLocation(currentParty.default_host_location)
+    } else {
+      setDefaultHostType('none')
+      setDefaultHostMemberId('')
+      setDefaultHostLocation('')
+    }
+  }, [currentParty?.name, currentParty?.days_of_week, currentParty?.default_host_member_id, currentParty?.default_host_location])
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -214,6 +235,53 @@ export function AdminPanel() {
     const sortedA = [...a].sort((x, y) => x - y)
     const sortedB = [...b].sort((x, y) => x - y)
     return sortedA.every((val, idx) => val === sortedB[idx])
+  }
+
+  const handleSaveDefaultHost = async () => {
+    if (!currentParty) return
+
+    setSavingHost(true)
+    setError(null)
+
+    try {
+      const updates: { default_host_member_id: string | null; default_host_location: string | null } = {
+        default_host_member_id: null,
+        default_host_location: null,
+      }
+
+      if (defaultHostType === 'member' && defaultHostMemberId) {
+        updates.default_host_member_id = defaultHostMemberId
+      } else if (defaultHostType === 'location' && defaultHostLocation.trim()) {
+        updates.default_host_location = defaultHostLocation.trim()
+      }
+
+      const { error: updateError } = await supabase
+        .from('parties')
+        .update(updates)
+        .eq('id', currentParty.id)
+
+      if (updateError) throw updateError
+      await refreshParties()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update default host')
+    } finally {
+      setSavingHost(false)
+    }
+  }
+
+  const hasHostChanges = () => {
+    if (!currentParty) return false
+
+    if (defaultHostType === 'none') {
+      return !!(currentParty.default_host_member_id || currentParty.default_host_location)
+    }
+    if (defaultHostType === 'member') {
+      return defaultHostMemberId !== (currentParty.default_host_member_id || '')
+    }
+    if (defaultHostType === 'location') {
+      return defaultHostLocation.trim() !== (currentParty.default_host_location || '')
+    }
+    return false
   }
 
   const isUserAdmin = (profileId: string) => admins.some((a) => a.profile_id === profileId)
@@ -531,6 +599,85 @@ export function AdminPanel() {
             </div>
 
             <ThemeSelector />
+
+            <div className="hosting-settings">
+              <h3>Default Host</h3>
+              <p className="form-hint">
+                Set a default host for sessions. This will be pre-selected when scheduling new sessions.
+              </p>
+              <div className="host-type-selector">
+                <label className="host-type-option">
+                  <input
+                    type="radio"
+                    name="hostType"
+                    value="none"
+                    checked={defaultHostType === 'none'}
+                    onChange={() => setDefaultHostType('none')}
+                    disabled={savingHost}
+                  />
+                  <span>No default</span>
+                </label>
+                <label className="host-type-option">
+                  <input
+                    type="radio"
+                    name="hostType"
+                    value="member"
+                    checked={defaultHostType === 'member'}
+                    onChange={() => setDefaultHostType('member')}
+                    disabled={savingHost}
+                  />
+                  <span>Party Member</span>
+                </label>
+                <label className="host-type-option">
+                  <input
+                    type="radio"
+                    name="hostType"
+                    value="location"
+                    checked={defaultHostType === 'location'}
+                    onChange={() => setDefaultHostType('location')}
+                    disabled={savingHost}
+                  />
+                  <span>Custom Location</span>
+                </label>
+              </div>
+
+              {defaultHostType === 'member' && (
+                <select
+                  value={defaultHostMemberId}
+                  onChange={(e) => setDefaultHostMemberId(e.target.value)}
+                  className="form-input host-select"
+                  disabled={savingHost}
+                >
+                  <option value="">Select a member...</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.profiles?.display_name || member.name}
+                      {member.profiles?.address ? ' (has address)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {defaultHostType === 'location' && (
+                <input
+                  type="text"
+                  value={defaultHostLocation}
+                  onChange={(e) => setDefaultHostLocation(e.target.value)}
+                  placeholder="e.g., Game Store, Zoom, Discord"
+                  className="form-input"
+                  disabled={savingHost}
+                />
+              )}
+
+              <button
+                type="button"
+                className="form-button"
+                onClick={handleSaveDefaultHost}
+                disabled={savingHost || !hasHostChanges()}
+              >
+                {savingHost ? 'Saving...' : 'Save Default Host'}
+              </button>
+            </div>
 
             <div className="admin-list">
               <h3>Party Admins ({admins.length})</h3>

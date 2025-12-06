@@ -21,6 +21,11 @@ export interface GridAvailability {
   available: boolean
 }
 
+export interface ScheduledSession {
+  date: string
+  hostName?: string | null
+}
+
 interface AvailabilityGridProps {
   members: GridMember[]
   dates: string[]
@@ -29,6 +34,7 @@ interface AvailabilityGridProps {
   canEdit?: (memberId: string) => boolean
   showAdminBadge?: boolean
   readOnly?: boolean
+  scheduledSessions?: ScheduledSession[]
 }
 
 function AvailabilityGridComponent({
@@ -39,6 +45,7 @@ function AvailabilityGridComponent({
   canEdit,
   showAdminBadge,
   readOnly = false,
+  scheduledSessions = [],
 }: AvailabilityGridProps) {
   // Memoize the availability lookup map - only rebuilds when availability changes
   const availabilityMap = useMemo(() => {
@@ -48,6 +55,25 @@ function AvailabilityGridComponent({
     }
     return map
   }, [availability])
+
+  // Memoize scheduled dates lookup - maps date to host info
+  const scheduledMap = useMemo(() => {
+    const map = new Map<string, ScheduledSession>()
+    for (const session of scheduledSessions) {
+      map.set(session.date, session)
+    }
+    return map
+  }, [scheduledSessions])
+
+  const isScheduled = useCallback(
+    (date: string) => scheduledMap.has(date),
+    [scheduledMap]
+  )
+
+  const getScheduledInfo = useCallback(
+    (date: string) => scheduledMap.get(date),
+    [scheduledMap]
+  )
 
   const getAvailability = useCallback(
     (memberId: string, date: string) => {
@@ -100,8 +126,17 @@ function AvailabilityGridComponent({
           <div className="player-label">Adventurer</div>
           {dates.map((date) => {
             const allAvailable = isAllAvailable(date)
+            const scheduled = isScheduled(date)
+            const scheduledInfo = getScheduledInfo(date)
+            const hostTooltip = scheduledInfo?.hostName
+              ? `Scheduled - Host: ${scheduledInfo.hostName}`
+              : 'Scheduled'
             return (
-              <div key={date} className={`date-header ${allAvailable ? 'all-available' : ''}`}>
+              <div
+                key={date}
+                className={`date-header ${allAvailable ? 'all-available' : ''} ${scheduled ? 'scheduled' : ''}`}
+                title={scheduled ? hostTooltip : undefined}
+              >
                 <span className="day-of-week">{getDayOfWeek(date)}</span>
                 <span className="date-display">{formatDateDisplay(date)}</span>
                 <span className="available-count">
@@ -147,12 +182,13 @@ function AvailabilityGridComponent({
                     : 'unavailable'
                   : 'unset'
                 const allAvailable = isAllAvailable(date)
+                const scheduled = isScheduled(date)
 
                 return (
                   <button
                     key={date}
                     type="button"
-                    className={`availability-cell ${status} ${memberCanEdit ? 'clickable' : ''} ${allAvailable ? 'all-available-column' : ''}`}
+                    className={`availability-cell ${status} ${memberCanEdit ? 'clickable' : ''} ${allAvailable ? 'all-available-column' : ''} ${scheduled ? 'scheduled-column' : ''}`}
                     onClick={() => memberCanEdit && handleToggle(member.id, date)}
                     disabled={!memberCanEdit}
                     title={

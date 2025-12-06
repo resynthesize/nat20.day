@@ -5,7 +5,21 @@
  */
 
 import { HttpApiBuilder } from "@effect/platform"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Schema } from "effect"
+
+// Schema for joined profile data from Supabase
+const ProfileJoin = Schema.Struct({
+  display_name: Schema.optional(Schema.String),
+  avatar_url: Schema.optional(Schema.NullOr(Schema.String)),
+})
+
+// Helper to safely extract display_name from profiles join
+function getDisplayName(profiles: unknown, fallback: string): string {
+  // Supabase joins can return an array or single object
+  const normalized = Array.isArray(profiles) ? profiles[0] : profiles
+  const decoded = Schema.decodeUnknownOption(ProfileJoin)(normalized)
+  return decoded._tag === 'Some' ? (decoded.value.display_name ?? fallback) : fallback
+}
 import {
   Nat20Api,
   PartyMember,
@@ -104,8 +118,7 @@ export const AvailabilityHandlers = HttpApiBuilder.group(Nat20Api, "availability
                 id: m.id,
                 name: m.name,
                 profile_id: m.profile_id,
-                display_name:
-                  (m.profiles as { display_name?: string })?.display_name || m.name,
+                display_name: getDisplayName(m.profiles, m.name),
               })
           ),
           availability: availability.map(

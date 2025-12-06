@@ -620,6 +620,45 @@
   margin: 0 0 var(--spacing-sm);
 }
 
+/* Hosting Settings */
+.hosting-settings {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.hosting-settings h3 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.host-type-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-md) 0;
+}
+
+.host-type-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.host-type-option input[type="radio"] {
+  accent-color: var(--gold);
+}
+
+.host-select {
+  margin-top: var(--spacing-sm);
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .form-row {

@@ -1,62 +1,17 @@
 /**
- * Stripe Client with Effect Wrappers
+ * Stripe Operations
  *
- * Provides Effect-wrapped Stripe SDK operations for billing endpoints.
+ * Effect-wrapped Stripe SDK operations for billing endpoints.
  * All Stripe API calls are wrapped in Effect.tryPromise for proper error handling.
  */
 
 import Stripe from "stripe"
 import { Effect } from "effect"
 import { BillingError } from "../api.js"
+import { getStripeClient, getStripePriceId } from "./client.js"
 
 // ============================================================================
-// Stripe Client Initialization
-// ============================================================================
-
-let stripeInstance: Stripe | null = null
-
-/**
- * Get or create the Stripe client instance.
- * Lazily initialized to avoid issues during module loading.
- */
-export function getStripeClient(): Stripe {
-  if (!stripeInstance) {
-    const secretKey = process.env.STRIPE_SECRET_KEY
-    if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY environment variable is not set")
-    }
-    stripeInstance = new Stripe(secretKey, {
-      // Use SDK's default API version to ensure type compatibility
-      typescript: true,
-    })
-  }
-  return stripeInstance
-}
-
-/**
- * Get the Stripe Price ID from environment.
- */
-export function getStripePriceId(): string {
-  const priceId = process.env.STRIPE_PRICE_ID
-  if (!priceId) {
-    throw new Error("STRIPE_PRICE_ID environment variable is not set")
-  }
-  return priceId
-}
-
-/**
- * Get the Stripe Webhook Secret from environment.
- */
-export function getStripeWebhookSecret(): string {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!secret) {
-    throw new Error("STRIPE_WEBHOOK_SECRET environment variable is not set")
-  }
-  return secret
-}
-
-// ============================================================================
-// Effect-Wrapped Stripe Operations
+// Types
 // ============================================================================
 
 export interface CheckoutSessionParams {
@@ -74,6 +29,16 @@ export interface CreateSubscriptionParams {
   userId: string
   userEmail: string
 }
+
+export interface SubscriptionWithClientSecret {
+  subscriptionId: string
+  clientSecret: string
+  customerId: string
+}
+
+// ============================================================================
+// Checkout & Portal Operations
+// ============================================================================
 
 /**
  * Create a Stripe Checkout Session for a new party subscription.
@@ -164,6 +129,10 @@ export const createCustomerSession = (customerId: string) =>
     },
   })
 
+// ============================================================================
+// Subscription Operations
+// ============================================================================
+
 /**
  * Retrieve a Stripe Subscription by ID.
  */
@@ -177,28 +146,6 @@ export const getSubscription = (subscriptionId: string) =>
       console.error("Stripe subscription retrieval failed:", error)
       return new BillingError({
         message: error instanceof Error ? error.message : "Failed to retrieve subscription",
-      })
-    },
-  })
-
-/**
- * Create a SetupIntent for updating payment method.
- * Returns a client_secret for the Payment Element.
- */
-export const createSetupIntent = (customerId: string) =>
-  Effect.tryPromise({
-    try: async () => {
-      const stripe = getStripeClient()
-      return await stripe.setupIntents.create({
-        customer: customerId,
-        payment_method_types: ["card"],
-        usage: "off_session",
-      })
-    },
-    catch: (error) => {
-      console.error("Stripe SetupIntent creation failed:", error)
-      return new BillingError({
-        message: error instanceof Error ? error.message : "Failed to create setup intent",
       })
     },
   })
@@ -242,50 +189,6 @@ export const reactivateSubscription = (subscriptionId: string) =>
   })
 
 /**
- * Retrieve a Stripe Customer by ID.
- */
-export const getCustomer = (customerId: string) =>
-  Effect.tryPromise({
-    try: async () => {
-      const stripe = getStripeClient()
-      return await stripe.customers.retrieve(customerId)
-    },
-    catch: (error) => {
-      console.error("Stripe customer retrieval failed:", error)
-      return new BillingError({
-        message: error instanceof Error ? error.message : "Failed to retrieve customer",
-      })
-    },
-  })
-
-/**
- * Construct and verify a Stripe webhook event from the request.
- */
-export const constructWebhookEvent = (
-  payload: string | Buffer,
-  signature: string
-) =>
-  Effect.try({
-    try: () => {
-      const stripe = getStripeClient()
-      const webhookSecret = getStripeWebhookSecret()
-      return stripe.webhooks.constructEvent(payload, signature, webhookSecret)
-    },
-    catch: (error) => {
-      console.error("Stripe webhook verification failed:", error)
-      return new BillingError({
-        message: error instanceof Error ? error.message : "Webhook signature verification failed",
-      })
-    },
-  })
-
-export interface SubscriptionWithClientSecret {
-  subscriptionId: string
-  clientSecret: string
-  customerId: string
-}
-
-/**
  * Create a Stripe Subscription with incomplete payment status.
  * This returns a client_secret for the frontend to use with Payment Element.
  *
@@ -326,8 +229,6 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
         payment_behavior: "default_incomplete",
         payment_settings: {
           save_default_payment_method: "on_subscription",
-          // Payment methods controlled via Dashboard rules (no hardcoding needed)
-          // See: https://docs.stripe.com/payments/payment-method-rules
         },
         metadata: {
           party_name: params.partyName,
@@ -338,16 +239,12 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
       })
 
       // With default_incomplete, Stripe creates a PaymentIntent for collecting payment.
-      // We need the client_secret to render the Payment Element on the frontend.
-      // Note: Stripe's SDK doesn't infer types for expanded fields, so we use type guards.
       const invoice = subscription.latest_invoice
       if (typeof invoice === "string" || !invoice) {
         throw new Error("Invoice not expanded in subscription response")
       }
 
       // In 2025 Stripe API, PaymentIntent is accessed via invoicePayments endpoint
-      // 1. List invoice payments to get the PaymentIntent ID
-      // 2. Retrieve the PaymentIntent to get the client_secret
       const invoicePayments = await stripe.invoicePayments.list({ invoice: invoice.id })
       const firstPayment = invoicePayments.data[0]
 
@@ -378,6 +275,49 @@ export const createSubscriptionWithPaymentIntent = (params: CreateSubscriptionPa
       console.error("Stripe subscription creation failed:", error)
       return new BillingError({
         message: error instanceof Error ? error.message : "Failed to create subscription",
+      })
+    },
+  })
+
+// ============================================================================
+// Payment Operations
+// ============================================================================
+
+/**
+ * Create a SetupIntent for updating payment method.
+ * Returns a client_secret for the Payment Element.
+ */
+export const createSetupIntent = (customerId: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const stripe = getStripeClient()
+      return await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        usage: "off_session",
+      })
+    },
+    catch: (error) => {
+      console.error("Stripe SetupIntent creation failed:", error)
+      return new BillingError({
+        message: error instanceof Error ? error.message : "Failed to create setup intent",
+      })
+    },
+  })
+
+/**
+ * Retrieve a Stripe Customer by ID.
+ */
+export const getCustomer = (customerId: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const stripe = getStripeClient()
+      return await stripe.customers.retrieve(customerId)
+    },
+    catch: (error) => {
+      console.error("Stripe customer retrieval failed:", error)
+      return new BillingError({
+        message: error instanceof Error ? error.message : "Failed to retrieve customer",
       })
     },
   })

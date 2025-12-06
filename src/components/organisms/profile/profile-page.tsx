@@ -2,23 +2,29 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import { ApiTokens } from './api-tokens'
 
 export function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth()
   // Track only the edited value; null means using profile value
   const [editedName, setEditedName] = useState<string | null>(null)
+  const [editedAddress, setEditedAddress] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const displayName = editedName ?? profile?.display_name ?? ''
-  const hasChanges = editedName !== null && editedName !== profile?.display_name
+  const address = editedAddress ?? profile?.address ?? ''
+  const hasNameChanges = editedName !== null && editedName !== profile?.display_name
+  const hasAddressChanges = editedAddress !== null && editedAddress !== (profile?.address ?? '')
+  const hasChanges = hasNameChanges || hasAddressChanges
 
-  const { uploadAvatar, updateDisplayName, uploading, saving, error, clearError } =
+  const { uploadAvatar, updateDisplayName, updateAddress, uploading, saving, error, clearError } =
     useProfile({
       userId: user?.id || '',
       onSuccess: () => {
         refreshProfile()
         setEditedName(null)
+        setEditedAddress(null)
       },
     })
 
@@ -27,9 +33,17 @@ export function ProfilePage() {
     clearError()
   }
 
+  const handleAddressChange = (value: string) => {
+    setEditedAddress(value)
+    clearError()
+  }
+
   const handleSave = async () => {
-    if (hasChanges) {
+    if (hasNameChanges) {
       await updateDisplayName(displayName)
+    }
+    if (hasAddressChanges) {
+      await updateAddress(address || null)
     }
   }
 
@@ -111,6 +125,19 @@ export function ProfilePage() {
               className="profile-input disabled"
             />
             <span className="input-hint">Email cannot be changed</span>
+          </label>
+
+          <label className="profile-label">
+            <span>Address (for hosting)</span>
+            <AddressAutocomplete
+              value={address}
+              onChange={handleAddressChange}
+              placeholder="Enter your address or meeting URL"
+              className="profile-input"
+            />
+            <span className="input-hint">
+              Only shown to party members when you're the host
+            </span>
           </label>
 
           <button

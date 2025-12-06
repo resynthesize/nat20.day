@@ -1,5 +1,7 @@
 export { ScheduleGrid } from './schedule-grid'
-export { AvailabilityGrid, type GridMember, type GridAvailability } from './availability-grid'
+export { AvailabilityGrid, type GridMember, type GridAvailability, type ScheduledSession } from './availability-grid'
 export { SessionTracker } from './session-tracker'
 export { ScheduleGridSkeleton } from './schedule-grid-skeleton'
 export { PartyDatesList } from './party-dates-list'
+export { NextSessionBanner } from './next-session-banner'
+export { ScheduleSessionModal } from './schedule-session-modal'

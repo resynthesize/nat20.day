@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { z } from 'zod'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
 import {
@@ -10,6 +11,35 @@ import {
 } from '../lib/schemas'
 import { generateDates } from '../lib/dates'
 import { STORAGE_KEYS, CACHE } from '../lib/constants'
+
+/**
+ * Realtime payload schemas for availability changes
+ */
+const AvailabilityRealtimeRecordSchema = z.object({
+  id: z.string(),
+  party_member_id: z.string(),
+  date: z.string(),
+  available: z.boolean(),
+  updated_at: z.string(),
+})
+type AvailabilityRealtimeRecord = z.infer<typeof AvailabilityRealtimeRecordSchema>
+
+const AvailabilityDeleteRecordSchema = z.object({
+  party_member_id: z.string(),
+  date: z.string(),
+})
+type AvailabilityDeleteRecord = z.infer<typeof AvailabilityDeleteRecordSchema>
+
+// Parse helpers that return null on failure
+function parseRealtimeRecord(obj: unknown): AvailabilityRealtimeRecord | null {
+  const result = AvailabilityRealtimeRecordSchema.safeParse(obj)
+  return result.success ? result.data : null
+}
+
+function parseDeleteRecord(obj: unknown): AvailabilityDeleteRecord | null {
+  const result = AvailabilityDeleteRecordSchema.safeParse(obj)
+  return result.success ? result.data : null
+}
 
 interface AvailabilityData {
   dates: string[]
@@ -246,11 +276,13 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
         (payload) => {
           const { eventType, new: newRecord, old: oldRecord } = payload
 
+          // Parse records using Zod schemas
+          const parsedNew = parseRealtimeRecord(newRecord)
+          const parsedOld = parseDeleteRecord(oldRecord)
+
           // Extract member ID and date from the record
-          const memberId = (newRecord as { party_member_id?: string })?.party_member_id ||
-                           (oldRecord as { party_member_id?: string })?.party_member_id
-          const date = (newRecord as { date?: string })?.date ||
-                       (oldRecord as { date?: string })?.date
+          const memberId = parsedNew?.party_member_id ?? parsedOld?.party_member_id
+          const date = parsedNew?.date ?? parsedOld?.date
 
           if (!memberId || !date) return
 
@@ -260,9 +292,8 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
 
           if (pendingMutationTime) {
             // Compare with the event's updated_at timestamp
-            const eventTime = (newRecord as { updated_at?: string })?.updated_at
-            if (eventTime) {
-              const eventTimestamp = new Date(eventTime).getTime()
+            if (parsedNew?.updated_at) {
+              const eventTimestamp = new Date(parsedNew.updated_at).getTime()
               // If the event is from our own mutation or older, skip it
               // Allow a small buffer (100ms) for clock skew
               if (eventTimestamp <= pendingMutationTime + 100) {
@@ -284,42 +315,36 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
 
             switch (eventType) {
               case 'INSERT': {
-                const record = newRecord as {
-                  id: string
-                  party_member_id: string
-                  date: string
-                  available: boolean
-                  updated_at: string
-                }
+                if (!parsedNew) return old
                 // Check if date is within our displayed range
-                if (!old.dates.includes(record.date)) return old
+                if (!old.dates.includes(parsedNew.date)) return old
                 // Avoid duplicates (might already exist from optimistic update)
                 const exists = old.availability.some(
-                  (a) => a.party_member_id === record.party_member_id && a.date === record.date
+                  (a) => a.party_member_id === parsedNew.party_member_id && a.date === parsedNew.date
                 )
                 if (exists) {
                   // Update existing record
                   return {
                     ...old,
                     availability: old.availability.map((a) =>
-                      a.party_member_id === record.party_member_id && a.date === record.date
-                        ? { ...a, id: record.id, available: record.available, updated_at: record.updated_at }
+                      a.party_member_id === parsedNew.party_member_id && a.date === parsedNew.date
+                        ? { ...a, id: parsedNew.id, available: parsedNew.available, updated_at: parsedNew.updated_at }
                         : a
                     ),
                   }
                 }
                 // Add new record
-                const member = old.partyMembers.find((m) => m.id === record.party_member_id)
+                const member = old.partyMembers.find((m) => m.id === parsedNew.party_member_id)
                 return {
                   ...old,
                   availability: [
                     ...old.availability,
                     {
-                      id: record.id,
-                      party_member_id: record.party_member_id,
-                      date: record.date,
-                      available: record.available,
-                      updated_at: record.updated_at,
+                      id: parsedNew.id,
+                      party_member_id: parsedNew.party_member_id,
+                      date: parsedNew.date,
+                      available: parsedNew.available,
+                      updated_at: parsedNew.updated_at,
                       party_members: { name: member?.name ?? '' },
                     },
                   ],
@@ -327,29 +352,23 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
               }
 
               case 'UPDATE': {
-                const record = newRecord as {
-                  id: string
-                  party_member_id: string
-                  date: string
-                  available: boolean
-                  updated_at: string
-                }
+                if (!parsedNew) return old
                 return {
                   ...old,
                   availability: old.availability.map((a) =>
-                    a.party_member_id === record.party_member_id && a.date === record.date
-                      ? { ...a, available: record.available, updated_at: record.updated_at }
+                    a.party_member_id === parsedNew.party_member_id && a.date === parsedNew.date
+                      ? { ...a, available: parsedNew.available, updated_at: parsedNew.updated_at }
                       : a
                   ),
                 }
               }
 
               case 'DELETE': {
-                const record = oldRecord as { party_member_id: string; date: string }
+                if (!parsedOld) return old
                 return {
                   ...old,
                   availability: old.availability.filter(
-                    (a) => !(a.party_member_id === record.party_member_id && a.date === record.date)
+                    (a) => !(a.party_member_id === parsedOld.party_member_id && a.date === parsedOld.date)
                   ),
                 }
               }

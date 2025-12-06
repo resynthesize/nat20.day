@@ -771,3 +771,377 @@
     font-size: 0.65rem;
   }
 }
+
+/* ============================================= */
+/* Next Session Banner */
+/* ============================================= */
+
+.next-session-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: linear-gradient(135deg, var(--accent-primary-bg) 0%, color-mix(in srgb, var(--accent-primary) 20%, var(--bg-secondary)) 100%);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.next-session-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.next-session-icon {
+  font-size: 1.5rem;
+}
+
+.next-session-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.next-session-label {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.next-session-countdown {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.next-session-edit {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.next-session-edit:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.next-session-date {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.next-session-host {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+}
+
+.next-session-host-label {
+  color: var(--text-muted);
+}
+
+.next-session-host-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.next-session-location {
+  margin-top: var(--spacing-xs);
+}
+
+.next-session-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--bg-primary);
+  background: var(--gold);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.next-session-link:hover {
+  background: var(--gold-light);
+}
+
+.next-session-maps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.next-session-address {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.next-session-map-links {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.next-session-map-link {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.next-session-map-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================= */
+/* Modal Styles */
+/* ============================================= */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-md);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modal-close {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.modal-button-secondary {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+}
+
+.modal-button-secondary:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.modal-button-primary {
+  color: var(--bg-primary);
+  background: var(--gold);
+  border: 1px solid var(--gold);
+}
+
+.modal-button-primary:hover:not(:disabled) {
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+}
+
+/* ============================================= */
+/* Schedule Session Modal */
+/* ============================================= */
+
+.schedule-modal-date {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.schedule-modal-date-icon {
+  font-size: 1.5rem;
+}
+
+.schedule-modal-date-text {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.schedule-modal-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.schedule-modal-fieldset legend {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.schedule-modal-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.schedule-modal-radio input[type="radio"] {
+  accent-color: var(--gold);
+}
+
+.schedule-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.schedule-modal-field label {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.schedule-modal-select,
+.schedule-modal-input {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease;
+}
+
+.schedule-modal-select:focus,
+.schedule-modal-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.schedule-modal-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.schedule-modal-checkbox input[type="checkbox"] {
+  accent-color: var(--gold);
+}
+
+/* ============================================= */
+/* Scheduled Date Indicator */
+/* ============================================= */
+
+.date-header.scheduled {
+  background: color-mix(in srgb, var(--gold) 15%, var(--bg-tertiary));
+  position: relative;
+}
+
+.date-header.scheduled::before {
+  content: '📅';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.6rem;
+}
+
+.date-header.scheduled .day-of-week {
+  color: var(--gold);
+}
+
+.availability-cell.scheduled-column {
+  background: color-mix(in srgb, var(--gold) 5%, transparent) !important;
+}

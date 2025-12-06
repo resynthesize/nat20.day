@@ -9,7 +9,7 @@ export {
   // Stripe client
   getStripeClient,
   getStripePriceId,
-  getStripeWebhookSecret,
+  getWebhookSecret,
   // Effect-wrapped operations
   createCheckoutSession,
   createPortalSession,
@@ -19,10 +19,9 @@ export {
   cancelSubscriptionAtPeriodEnd,
   reactivateSubscription,
   getCustomer,
-  constructWebhookEvent,
   createSubscriptionWithPaymentIntent,
   // Types
   type CheckoutSessionParams,
   type CreateSubscriptionParams,
   type SubscriptionWithClientSecret,
-} from "./stripe.js"
+} from "../stripe/index.js"

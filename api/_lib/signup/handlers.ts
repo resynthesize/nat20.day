@@ -19,7 +19,7 @@ import {
   BillingError,
 } from "../api.js"
 import { getServiceClient } from "../supabase.js"
-import { getStripeClient, getStripePriceId } from "../billing/stripe.js"
+import { getStripeClient, getStripePriceId } from "../stripe/client.js"
 import { CurrentUser, AuthenticationLive, CurrentUserStub } from "../handlers/index.js"
 
 // ============================================================================
@@ -264,7 +264,7 @@ export const SignupHandlers = HttpApiBuilder.group(Nat20Api, "signup", (handlers
 
         // Get Stripe subscription to extract period dates
         const stripe = getStripeClient()
-        const subscription = yield* Effect.tryPromise({
+        const subscription: Stripe.Subscription = yield* Effect.tryPromise({
           try: () => stripe.subscriptions.retrieve(pendingSignup.stripe_subscription_id, {
             expand: ['items.data'],
           }),

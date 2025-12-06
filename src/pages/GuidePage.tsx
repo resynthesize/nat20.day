@@ -529,11 +529,13 @@ function InlineMarkdown({ text }: { text: string }) {
     // Links
     const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/)
 
+    type MatchInfo = { type: string; match: RegExpMatchArray; index: number }
+    const isMatch = (v: MatchInfo | false | null | undefined): v is MatchInfo => Boolean(v)
     const matches = [
       codeMatch && { type: 'code', match: codeMatch, index: remaining.indexOf(codeMatch[0]) },
       boldMatch && { type: 'bold', match: boldMatch, index: remaining.indexOf(boldMatch[0]) },
       linkMatch && { type: 'link', match: linkMatch, index: remaining.indexOf(linkMatch[0]) },
-    ].filter(Boolean) as { type: string; match: RegExpMatchArray; index: number }[]
+    ].filter(isMatch)
 
     if (matches.length === 0) {
       parts.push(remaining)

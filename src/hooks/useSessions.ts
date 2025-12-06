@@ -1,9 +1,9 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { differenceInDays, parseISO, isBefore, startOfDay } from 'date-fns'
+import { differenceInDays, parseISO, isBefore, isAfter, startOfDay } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
-import { parseSessions, type Session } from '../lib/schemas'
+import { parseSessionsWithHost, type SessionWithHost } from '../lib/schemas'
 import { CACHE } from '../lib/constants'
 import { useAuth } from './useAuth'
 
@@ -14,12 +14,24 @@ interface UseSessionsOptions {
   memberCount?: number
 }
 
+interface ScheduleSessionOptions {
+  date: string
+  hostMemberId?: string | null
+  hostLocation?: string | null
+  hostAddress?: string | null
+  isVirtual?: boolean
+}
+
 interface UseSessionsReturn {
-  sessions: Session[]
-  lastSession: Session | null
+  sessions: SessionWithHost[]
+  lastSession: SessionWithHost | null
+  nextScheduledSession: SessionWithHost | null
   daysSinceLastSession: number | null
   suggestedDate: string | null
   confirmSession: (date: string) => Promise<void>
+  scheduleSession: (options: ScheduleSessionOptions) => Promise<void>
+  unscheduleSession: (sessionId: string) => Promise<void>
+  updateSessionHost: (sessionId: string, options: Omit<ScheduleSessionOptions, 'date'>) => Promise<void>
   loading: boolean
   error: string | null
 }
@@ -42,7 +54,7 @@ export function useSessions({
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
-  // Fetch sessions for this party
+  // Fetch sessions for this party with host data
   const {
     data: sessions = [],
     isLoading: loading,
@@ -54,21 +66,73 @@ export function useSessions({
 
       const { data, error } = await supabase
         .from('sessions')
-        .select('*')
+        .select(`
+          *,
+          host_member:party_members!sessions_host_member_id_fkey (
+            id,
+            name,
+            profiles (
+              display_name,
+              avatar_url,
+              address
+            )
+          )
+        `)
         .eq('party_id', partyId)
         .order('date', { ascending: false })
 
       if (error) throw error
-      return parseSessions(data)
+      return parseSessionsWithHost(data)
     },
     enabled: !!partyId,
     staleTime: CACHE.STALE_TIME_DEFAULT,
   })
 
-  // Find the most recent session
+  // Real-time subscription for session changes
+  useEffect(() => {
+    if (!partyId) return
+
+    const channel = supabase
+      .channel(`sessions:${partyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sessions',
+          filter: `party_id=eq.${partyId}`,
+        },
+        () => {
+          // Invalidate query to refetch on any change
+          queryClient.invalidateQueries({ queryKey: queryKeys.sessions(partyId) })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [partyId, queryClient])
+
+  // Find the most recent past session
   const lastSession = useMemo(() => {
-    if (sessions.length === 0) return null
-    return sessions[0] // Already sorted DESC
+    const today = startOfDay(new Date())
+    const pastSessions = sessions.filter((s) => {
+      const sessionDate = parseISO(s.date)
+      return isBefore(sessionDate, today) || sessionDate.getTime() === today.getTime()
+    })
+    return pastSessions.length > 0 ? pastSessions[0] : null // Already sorted DESC
+  }, [sessions])
+
+  // Find the next scheduled future session
+  const nextScheduledSession = useMemo(() => {
+    const today = startOfDay(new Date())
+    const futureSessions = sessions.filter((s) => {
+      const sessionDate = parseISO(s.date)
+      return isAfter(sessionDate, today)
+    })
+    // Return the soonest future session
+    return futureSessions.length > 0 ? futureSessions[futureSessions.length - 1] : null
   }, [sessions])
 
   // Calculate days since last session
@@ -114,7 +178,7 @@ export function useSessions({
     return candidates[0]
   }, [availability, memberCount, sessions])
 
-  // Mutation to confirm a session happened
+  // Mutation to confirm a session happened (simple, no host info)
   const confirmMutation = useMutation({
     mutationFn: async (date: string) => {
       if (!partyId || !user) throw new Error('Not authenticated')
@@ -132,11 +196,95 @@ export function useSessions({
     },
   })
 
+  // Mutation to schedule a session with host info
+  const scheduleMutation = useMutation({
+    mutationFn: async (options: ScheduleSessionOptions) => {
+      if (!partyId || !user) throw new Error('Not authenticated')
+
+      const { error } = await supabase.from('sessions').insert({
+        party_id: partyId,
+        date: options.date,
+        confirmed_by: user.id,
+        host_member_id: options.hostMemberId || null,
+        host_location: options.hostLocation || null,
+        host_address: options.hostAddress || null,
+        is_virtual: options.isVirtual ?? false,
+      })
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions(partyId ?? '') })
+    },
+  })
+
+  // Mutation to unschedule (delete) a session
+  const unscheduleMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      if (!partyId || !user) throw new Error('Not authenticated')
+
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('party_id', partyId)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions(partyId ?? '') })
+    },
+  })
+
+  // Mutation to update host info on an existing session
+  const updateHostMutation = useMutation({
+    mutationFn: async ({ sessionId, options }: { sessionId: string; options: Omit<ScheduleSessionOptions, 'date'> }) => {
+      if (!partyId || !user) throw new Error('Not authenticated')
+
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          host_member_id: options.hostMemberId || null,
+          host_location: options.hostLocation || null,
+          host_address: options.hostAddress || null,
+          is_virtual: options.isVirtual ?? false,
+        })
+        .eq('id', sessionId)
+        .eq('party_id', partyId)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions(partyId ?? '') })
+    },
+  })
+
   const confirmSession = useCallback(
     async (date: string) => {
       await confirmMutation.mutateAsync(date)
     },
     [confirmMutation]
+  )
+
+  const scheduleSession = useCallback(
+    async (options: ScheduleSessionOptions) => {
+      await scheduleMutation.mutateAsync(options)
+    },
+    [scheduleMutation]
+  )
+
+  const unscheduleSession = useCallback(
+    async (sessionId: string) => {
+      await unscheduleMutation.mutateAsync(sessionId)
+    },
+    [unscheduleMutation]
+  )
+
+  const updateSessionHost = useCallback(
+    async (sessionId: string, options: Omit<ScheduleSessionOptions, 'date'>) => {
+      await updateHostMutation.mutateAsync({ sessionId, options })
+    },
+    [updateHostMutation]
   )
 
   const error = queryError
@@ -148,9 +296,13 @@ export function useSessions({
   return {
     sessions,
     lastSession,
+    nextScheduledSession,
     daysSinceLastSession,
     suggestedDate,
     confirmSession,
+    scheduleSession,
+    unscheduleSession,
+    updateSessionHost,
     loading,
     error,
   }
