@@ -27,8 +27,12 @@ src/                      # React frontend
 └── test/                 # Test setup
 
 api/                      # Vercel serverless functions
-├── availability/         # GET availability endpoint
-├── lib/                  # API utilities (supabase service, errors, response)
+├── _lib/                 # Shared utilities
+│   ├── stripe/           # All Stripe code (webhooks, operations, schemas)
+│   ├── billing/          # Billing handlers (uses stripe/)
+│   ├── handlers/         # API endpoint handlers
+│   └── helpers.ts        # Shared helpers
+├── stripe-webhook.ts     # Stripe webhook entry point
 └── health.ts             # Health check
 
 supabase/
@@ -144,13 +148,21 @@ Set in Vercel Dashboard → Project Settings → Environment Variables:
 
 ### Database Migrations
 
-Migrations are **not** auto-applied. Run manually via Supabase Dashboard or CLI:
+Migrations are **not** auto-applied. Run via REST API (recommended) or CLI:
 
-**Option 1: Supabase Dashboard**
-1. Go to SQL Editor in Supabase Dashboard
-2. Paste migration SQL and execute
+**Option 1: REST API (works with Claude Code)**
+```bash
+PROJECT_ID="nptmqjpjlemfyivgoxkq"
+TOKEN=`grep -E "^supabase_access_token" infra/terraform.tfvars | cut -d'"' -f2`
+SQL=`cat supabase/migrations/00015_example.sql`
 
-**Option 2: Supabase CLI**
+curl -s -X POST "https://api.supabase.com/v1/projects/$PROJECT_ID/database/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"query\": $(echo "$SQL" | jq -Rs .)}"
+```
+
+**Option 2: Supabase CLI** (requires TTY for interactive login)
 ```bash
 supabase db push    # Apply migrations to remote
 ```
@@ -175,6 +187,35 @@ terraform apply     # Apply changes
 ```
 
 **Note:** Some config (Google OAuth, API keys) must be set manually in respective dashboards after `terraform apply`.
+
+## CLI Tokens
+
+CLI tokens are stored in `infra/terraform.tfvars` and exported via `~/.zshrc`:
+
+```bash
+# In ~/.zshrc - automatically loads tokens from tfvars
+_nat20_tfvars="$HOME/src/nat20.day/infra/terraform.tfvars"
+if [[ -f "$_nat20_tfvars" ]]; then
+  export VERCEL_TOKEN=`grep -E "^vercel_api_token" "$_nat20_tfvars" | cut -d'"' -f2`
+  export SUPABASE_ACCESS_TOKEN=`grep -E "^supabase_access_token" "$_nat20_tfvars" | cut -d'"' -f2`
+fi
+```
+
+**Using tokens with CLIs:**
+```bash
+# Vercel (pass via --token flag)
+vercel whoami --token "$VERCEL_TOKEN"
+
+# Supabase (uses SUPABASE_ACCESS_TOKEN env var automatically)
+SUPABASE_ACCESS_TOKEN=`grep...` supabase projects list
+```
+
+**Monitor Vercel deployments via API:**
+```bash
+TOKEN=`grep -E "^vercel_api_token" infra/terraform.tfvars | cut -d'"' -f2`
+curl -s -H "Authorization: Bearer $TOKEN" "https://api.vercel.com/v6/deployments?limit=3" | \
+  jq '.deployments[] | {state: .state, url: .url}'
+```
 
 ## Coding Conventions
 
