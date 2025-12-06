@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useApiTokens } from '../../hooks/useApiTokens'
+import { useApiTokens } from '@/hooks/useApiTokens'
 import { formatDistanceToNow } from 'date-fns'
-import { UI_TIMING } from '../../lib/constants'
+import { UI_TIMING } from '@/lib/constants'
 
 interface ApiTokensProps {
   userId: string | null

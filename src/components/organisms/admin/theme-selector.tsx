@@ -1,5 +1,5 @@
-import { useTheme } from '../../hooks/useTheme'
-import { themeList, type ThemeId } from '../../lib/themes'
+import { useTheme } from '@/hooks/useTheme'
+import { themeList, type ThemeId } from '@/lib/themes'
 
 /**
  * Theme selector for party settings.

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
-import { useParty } from '../../hooks/useParty'
-import { useAuth } from '../../hooks/useAuth'
-import { usePartyMembersQuery, useAddPartyMember, useRemovePartyMember } from '../../hooks/usePartyMembersQuery'
-import { usePartyAdminsQuery, usePromoteToAdmin, useRemoveAdmin } from '../../hooks/usePartyAdminsQuery'
-import { useSubscriptionQuery, useCancelSubscription, useReactivateSubscription } from '../../hooks/useSubscriptionQuery'
-import { UpdatePaymentModal } from './UpdatePaymentModal'
-import { ThemeSelector } from './ThemeSelector'
+import { supabase } from '@/lib/supabase'
+import { useParty } from '@/hooks/useParty'
+import { useAuth } from '@/hooks/useAuth'
+import { usePartyMembersQuery, useAddPartyMember, useRemovePartyMember } from '@/hooks/usePartyMembersQuery'
+import { usePartyAdminsQuery, usePromoteToAdmin, useRemoveAdmin } from '@/hooks/usePartyAdminsQuery'
+import { useSubscriptionQuery, useCancelSubscription, useReactivateSubscription } from '@/hooks/useSubscriptionQuery'
+import { UpdatePaymentModal } from './update-payment-modal'
+import { ThemeSelector } from './theme-selector'
+import { SkeletonBox } from '@/components/organisms/shared/skeleton'
 
 type TabType = 'members' | 'settings' | 'billing'
 
@@ -568,7 +569,27 @@ export function AdminPanel() {
         ) : (
           <div className="billing-tab">
             {loadingSubscription ? (
-              <div className="loading">Loading subscription...</div>
+              <div className="subscription-card">
+                <div className="subscription-header">
+                  <SkeletonBox width={160} height={24} />
+                  <SkeletonBox width={70} height={24} style={{ borderRadius: 'var(--radius-sm)' }} />
+                </div>
+                <div className="subscription-details">
+                  <div className="subscription-detail">
+                    <SkeletonBox width={40} height={14} />
+                    <SkeletonBox width={60} height={16} />
+                  </div>
+                  <div className="subscription-detail">
+                    <SkeletonBox width={50} height={14} />
+                    <SkeletonBox width={120} height={16} />
+                  </div>
+                </div>
+                <div className="billing-actions">
+                  <SkeletonBox width="100%" height={40} style={{ borderRadius: 'var(--radius-sm)' }} />
+                  <SkeletonBox width="100%" height={40} style={{ borderRadius: 'var(--radius-sm)' }} />
+                  <SkeletonBox width="100%" height={40} style={{ borderRadius: 'var(--radius-sm)' }} />
+                </div>
+              </div>
             ) : subscription ? (
               <>
                 <div className="subscription-card">

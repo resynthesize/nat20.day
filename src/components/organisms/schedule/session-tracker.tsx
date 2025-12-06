@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useSessions, getSessionFlavorText } from '../../hooks/useSessions'
-import { useParty } from '../../hooks/useParty'
-import { useAvailability } from '../../hooks/useAvailability'
-import { formatDateDisplay, getDayOfWeek } from '../../lib/dates'
+import { useSessions, getSessionFlavorText } from '@/hooks/useSessions'
+import { useParty } from '@/hooks/useParty'
+import { useAvailability } from '@/hooks/useAvailability'
+import { formatDateDisplay, getDayOfWeek } from '@/lib/dates'
 
 export function SessionTracker() {
   const { currentParty } = useParty()

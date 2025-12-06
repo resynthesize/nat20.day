@@ -1,10 +1,10 @@
 import { useMemo, useCallback } from 'react'
-import { useAuth } from '../../hooks/useAuth'
-import { useAvailability } from '../../hooks/useAvailability'
-import { useParty } from '../../hooks/useParty'
-import { AvailabilityGrid, type GridMember, type GridAvailability } from './AvailabilityGrid'
-import { ScheduleGridSkeleton } from './ScheduleGridSkeleton'
-import { SessionTracker } from './SessionTracker'
+import { useAuth } from '@/hooks/useAuth'
+import { useAvailability } from '@/hooks/useAvailability'
+import { useParty } from '@/hooks/useParty'
+import { AvailabilityGrid, type GridMember, type GridAvailability } from './availability-grid'
+import { ScheduleGridSkeleton } from './schedule-grid-skeleton'
+import { SessionTracker } from './session-tracker'
 
 export function ScheduleGrid() {
   const { user } = useAuth()
@@ -96,7 +96,7 @@ export function ScheduleGrid() {
   }
 
   if (error) {
-    return <div className="error">Error: {error}</div>
+    return <div className="error-message">Error: {error}</div>
   }
 
   return (

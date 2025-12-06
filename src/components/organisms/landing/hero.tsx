@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 const taglines = [
@@ -14,7 +15,9 @@ const taglines = [
 ]
 
 export function Hero() {
-  const tagline = taglines[Math.floor(Math.random() * taglines.length)]
+  const [tagline] = useState(
+    () => taglines[Math.floor(Math.random() * taglines.length)]
+  )
 
   return (
     <section className="hero">

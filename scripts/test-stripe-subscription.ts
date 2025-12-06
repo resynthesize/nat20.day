@@ -2,6 +2,7 @@
  * Local test script for Stripe subscription creation
  * Run with: npx tsx scripts/test-stripe-subscription.ts
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import Stripe from "stripe"
 import { readFileSync } from "fs"

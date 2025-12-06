@@ -75,6 +75,27 @@ function applyThemeToDOM(theme: Theme): void {
   root.style.setProperty('--font-heading', theme.typography.fontHeading)
   root.style.setProperty('--font-body', theme.typography.fontBody)
 
+  // shadcn/ui CSS variable mappings (for atoms to pick up theme changes)
+  root.style.setProperty('--background', theme.colors.bgPrimary)
+  root.style.setProperty('--foreground', theme.colors.textPrimary)
+  root.style.setProperty('--card', theme.colors.bgSecondary)
+  root.style.setProperty('--card-foreground', theme.colors.textPrimary)
+  root.style.setProperty('--popover', theme.colors.bgSecondary)
+  root.style.setProperty('--popover-foreground', theme.colors.textPrimary)
+  root.style.setProperty('--primary', theme.colors.accentPrimary)
+  root.style.setProperty('--primary-foreground', theme.colors.bgPrimary)
+  root.style.setProperty('--secondary', theme.colors.bgTertiary)
+  root.style.setProperty('--secondary-foreground', theme.colors.textPrimary)
+  root.style.setProperty('--muted', theme.colors.bgTertiary)
+  root.style.setProperty('--muted-foreground', theme.colors.textMuted)
+  root.style.setProperty('--accent', theme.colors.bgElevated)
+  root.style.setProperty('--accent-foreground', theme.colors.textPrimary)
+  root.style.setProperty('--destructive', theme.colors.accentSecondary)
+  root.style.setProperty('--destructive-foreground', theme.colors.textPrimary)
+  root.style.setProperty('--border', theme.colors.borderColor)
+  root.style.setProperty('--input', theme.colors.borderColor)
+  root.style.setProperty('--ring', theme.colors.accentPrimary)
+
   // Set data attribute for potential CSS selectors (e.g., [data-theme="vtm"])
   root.dataset.theme = theme.id
 }

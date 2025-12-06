@@ -235,3 +235,4 @@ The app uses D&D-themed terminology throughout:
 - Random taglines reference D&D gameplay
 
 Maintain this theme in any user-facing copy or UI additions.
+- use playwright to capture screenshots

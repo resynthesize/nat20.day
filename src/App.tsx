@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Routes, Route, Link, useLocation, useSearchParams, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { HomePage } from './pages/HomePage'
@@ -10,12 +10,11 @@ import { OAuthConsentPage } from './pages/OAuthConsentPage'
 import { PartyProvider, useParty } from './hooks/useParty'
 import { ThemeProvider } from './hooks/useTheme'
 import { usePrefetchOnLogin } from './hooks/usePrefetchOnLogin'
-import { AuthTabs } from './components/auth/AuthTabs'
-import { ScheduleGrid } from './components/schedule/ScheduleGrid'
-import { ProfilePage } from './components/profile/ProfilePage'
-import { AdminPanel } from './components/admin/AdminPanel'
-import { PartySelector } from './components/party/PartySelector'
-import { CreatePartyModal } from './components/party/CreatePartyModal'
+import { AuthTabs } from './components/organisms/auth'
+import { ScheduleGrid } from './components/organisms/schedule'
+import { ProfilePage } from './components/organisms/profile'
+import { AdminPanel } from './components/organisms/admin'
+import { PartySelector, CreatePartyModal } from './components/organisms/party'
 import { STORAGE_KEYS, UI_TIMING } from './lib/constants'
 import './styles/index.css'
 
@@ -43,73 +42,83 @@ function AuthenticatedApp() {
   // Prefetch admin panel data for faster navigation
   usePrefetchOnLogin()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [checkoutMessage, setCheckoutMessage] = useState<{ type: 'success' | 'canceled'; text: string } | null>(null)
 
   const { session } = useAuth()
-  const [isCompletingSignup, setIsCompletingSignup] = useState(false)
+
+  // Initialize checkout message from URL params (read once on mount)
+  const [checkoutMessage, setCheckoutMessage] = useState<{ type: 'success' | 'canceled'; text: string } | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const checkoutStatus = params.get('checkout')
+    if (checkoutStatus === 'success') {
+      return { type: 'success', text: 'Party created successfully! Welcome to your new adventure.' }
+    } else if (checkoutStatus === 'canceled') {
+      return { type: 'canceled', text: 'Checkout was canceled. You can try again anytime.' }
+    }
+    return null
+  })
+
+  // Track pending signup to prevent duplicate API calls (ref to avoid re-render)
+  const pendingSignupProcessed = useRef(false)
 
   // Handle pending signup completion (from pre-auth signup flow)
   useEffect(() => {
     const pendingSignupId = searchParams.get('complete_signup')
-    if (pendingSignupId && session && !isCompletingSignup) {
-      setIsCompletingSignup(true)
+    if (!pendingSignupId || !session || pendingSignupProcessed.current) return
 
-      // Call the signup completion endpoint
-      fetch('/api/v1/signup/complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          pending_signup_id: pendingSignupId,
-        }),
+    pendingSignupProcessed.current = true
+
+    // Call the signup completion endpoint
+    fetch('/api/v1/signup/complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        pending_signup_id: pendingSignupId,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null)
+          throw new Error(errorData?.message || 'Failed to complete signup')
+        }
+        return res.json()
       })
-        .then(async (res) => {
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => null)
-            throw new Error(errorData?.message || 'Failed to complete signup')
-          }
-          return res.json()
-        })
-        .then((data) => {
-          // Clear pending signup from localStorage
-          localStorage.removeItem(STORAGE_KEYS.PENDING_SIGNUP)
-          setCheckoutMessage({ type: 'success', text: `Party "${data.party_name}" created successfully! Welcome to your new adventure.` })
-          // Refresh parties and select the newest one
-          refreshParties({ selectNewest: true })
-        })
-        .catch((err) => {
-          console.error('Failed to complete signup:', err)
-          setCheckoutMessage({ type: 'canceled', text: err.message || 'Failed to complete signup. Please try again.' })
-        })
-        .finally(() => {
-          // Clean up the URL
-          searchParams.delete('complete_signup')
-          setSearchParams(searchParams, { replace: true })
-          setIsCompletingSignup(false)
-        })
-    }
-  }, [searchParams, setSearchParams, session, refreshParties, isCompletingSignup])
+      .then((data) => {
+        // Clear pending signup from localStorage
+        localStorage.removeItem(STORAGE_KEYS.PENDING_SIGNUP)
+        setCheckoutMessage({ type: 'success', text: `Party "${data.party_name}" created successfully! Welcome to your new adventure.` })
+        // Refresh parties and select the newest one
+        refreshParties({ selectNewest: true })
+      })
+      .catch((err) => {
+        console.error('Failed to complete signup:', err)
+        setCheckoutMessage({ type: 'canceled', text: err.message || 'Failed to complete signup. Please try again.' })
+      })
+      .finally(() => {
+        // Clean up the URL
+        searchParams.delete('complete_signup')
+        setSearchParams(searchParams, { replace: true })
+      })
+  }, [searchParams, setSearchParams, session, refreshParties])
 
-  // Handle checkout redirect results
+  // Clean up checkout URL params and trigger side effects (runs once on mount if needed)
   useEffect(() => {
     const checkoutStatus = searchParams.get('checkout')
     if (checkoutStatus === 'success') {
-      setCheckoutMessage({ type: 'success', text: 'Party created successfully! Welcome to your new adventure.' })
-      // Refresh parties and select the newest one (the one just created)
+      // Refresh parties to pick up the new party
       refreshParties({ selectNewest: true })
       // Clean up the URL
       searchParams.delete('checkout')
       searchParams.delete('session_id')
       setSearchParams(searchParams, { replace: true })
     } else if (checkoutStatus === 'canceled') {
-      setCheckoutMessage({ type: 'canceled', text: 'Checkout was canceled. You can try again anytime.' })
       // Clean up the URL
       searchParams.delete('checkout')
       setSearchParams(searchParams, { replace: true })
     }
-  }, [searchParams, setSearchParams, refreshParties])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- Run once on mount to process URL params
 
   // Auto-dismiss checkout message
   useEffect(() => {
@@ -120,7 +129,7 @@ function AuthenticatedApp() {
   }, [checkoutMessage])
 
   return (
-    <div className="app">
+    <div className="schedule-container">
       <header className="header">
         <div className="header-left">
           <Link to="/app" className="title-link">
@@ -187,13 +196,12 @@ function AuthenticatedApp() {
       </main>
 
       <footer className="footer">
-        <p className="hint">Click a cell in your row to toggle availability.</p>
+        <p>Click a cell in your row to toggle availability.</p>
         <p>
           <a
             href="https://github.com/resynthesize/nat20.day"
             target="_blank"
             rel="noopener noreferrer"
-            className="github-link"
           >
             github
           </a>
@@ -217,9 +225,9 @@ function LoginPage() {
   )
 
   return (
-    <div className="app login-screen">
-      <div className="login-container">
-        <h1 className="title">nat20.day</h1>
+    <div className="login-page">
+      <div className="login-content">
+        <h1>nat20.day</h1>
         <p className="subtitle">D&D Session Scheduler</p>
         <p className="tagline">"{tagline}"</p>
         <AuthTabs />

@@ -3,11 +3,11 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements } from '@stripe/react-stripe-js'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { PaymentForm } from '../components/party/PaymentForm'
-import { OAuthButton } from '../components/auth/OAuthButton'
-import { LandingNav } from '../components/landing/LandingNav'
-import { Footer } from '../components/landing/Footer'
+import { PaymentForm } from '../components/organisms/party'
+import { OAuthButton } from '../components/organisms/auth'
+import { LandingNav, Footer } from '../components/organisms/landing'
 import { STORAGE_KEYS } from '../lib/constants'
+import '../styles/signup.css'
 
 type GameType = 'dnd' | 'mtg' | 'warhammer' | 'boardgames' | 'other'
 type SignupStep = 'details' | 'payment' | 'auth'
@@ -254,7 +254,7 @@ export function SignupPage() {
     }
   }
 
-  const getStepClass = (stepName: SignupStep, currentStep: SignupStep) => {
+  const getStepClass = (stepName: SignupStep, currentStep: SignupStep): string => {
     const stepOrder: SignupStep[] = ['details', 'payment', 'auth']
     const currentIndex = stepOrder.indexOf(currentStep)
     const stepIndex = stepOrder.indexOf(stepName)
@@ -266,25 +266,26 @@ export function SignupPage() {
 
   const stepIndicator = (
     <div className="signup-steps">
-      <div className={`signup-step ${getStepClass('details', step)}`}>
-        <span className="signup-step-number">1</span>
-        <span className="signup-step-label">Party Details</span>
-      </div>
-      <div className="signup-step-connector" />
-      <div className={`signup-step ${getStepClass('payment', step)}`}>
-        <span className="signup-step-number">2</span>
-        <span className="signup-step-label">Payment</span>
-      </div>
-      <div className="signup-step-connector" />
-      <div className={`signup-step ${getStepClass('auth', step)}`}>
-        <span className="signup-step-number">3</span>
-        <span className="signup-step-label">Create Account</span>
-      </div>
+      {(['details', 'payment', 'auth'] as SignupStep[]).map((stepName, index) => {
+        const stepClass = getStepClass(stepName, step)
+        const labels = ['Party Details', 'Payment', 'Create Account']
+        return (
+          <div key={stepName} className="signup-step-wrapper">
+            {index > 0 && <div className="signup-step-connector" />}
+            <div className={`signup-step ${stepClass}`}>
+              <span className="signup-step-number">
+                {stepClass === 'completed' ? '' : index + 1}
+              </span>
+              <span className="signup-step-label">{labels[index]}</span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 
   return (
-    <div className="landing-page">
+    <div className="signup-page-wrapper">
       <LandingNav />
 
       <main className="signup-page">
@@ -329,17 +330,17 @@ export function SignupPage() {
 
               <label className="signup-label">
                 <span>Game Type</span>
-                <div className="game-type-selector">
+                <div className="signup-game-types">
                   {GAME_TYPE_OPTIONS.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`game-type-option ${gameType === option.value ? 'selected' : ''}`}
+                      className={`signup-game-type ${gameType === option.value ? 'selected' : ''}`}
                       onClick={() => setGameType(option.value)}
                       disabled={loading}
                     >
-                      <span className="game-type-label">{option.label}</span>
-                      <span className="game-type-description">{option.description}</span>
+                      <span className="signup-game-type-label">{option.label}</span>
+                      <span className="signup-game-type-desc">{option.description}</span>
                     </button>
                   ))}
                 </div>
@@ -367,11 +368,9 @@ export function SignupPage() {
 
           {step === 'payment' && clientSecret && stripePromise && (
             <div className="signup-form">
-              <div className="payment-summary">
-                <p className="payment-summary-party">
-                  <strong>{partyName}</strong>
-                </p>
-                <p className="payment-summary-amount">$10.00/year</p>
+              <div className="signup-payment-summary">
+                <p><strong>{partyName}</strong></p>
+                <p className="signup-payment-amount">$10.00/year</p>
               </div>
 
               <Elements

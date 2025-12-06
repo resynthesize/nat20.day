@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, createContext, useContext, useRef, type ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
@@ -48,7 +48,13 @@ export function PartyProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
 
   // Local state for current party selection (UI state, not server state)
-  const [currentPartyId, setCurrentPartyId] = useState<string | null>(() => getStoredPartyId())
+  // Initialize from localStorage, but clear if not authenticated
+  const [currentPartyId, setCurrentPartyId] = useState<string | null>(() =>
+    isAuthenticated ? getStoredPartyId() : null
+  )
+
+  // Track if initial party selection has been processed
+  const initialSelectionDone = useRef(false)
 
   // TanStack Query for fetching parties (Supabase - no limit concerns)
   const {
@@ -72,6 +78,12 @@ export function PartyProvider({ children }: { children: ReactNode }) {
 
     // If current selection is valid, keep it
     if (currentPartyId && parties.some((p) => p.id === currentPartyId)) {
+      initialSelectionDone.current = true
+      return
+    }
+
+    // Avoid re-running selection logic after initial selection
+    if (initialSelectionDone.current && currentPartyId === null) {
       return
     }
 
@@ -80,16 +92,24 @@ export function PartyProvider({ children }: { children: ReactNode }) {
     const partyToSelect = (storedId && parties.find((p) => p.id === storedId)) || parties[0]
 
     if (partyToSelect) {
+      initialSelectionDone.current = true
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronizing selection with fetched data
       setCurrentPartyId(partyToSelect.id)
       storePartyId(partyToSelect.id)
     }
   }, [parties, currentPartyId])
 
-  // Clear state when user logs out
+  // Track previous auth state to detect logout
+  const wasAuthenticated = useRef(isAuthenticated)
+
+  // Clear state when user logs out (transition from authenticated to not)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (wasAuthenticated.current && !isAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clearing state on auth change
       setCurrentPartyId(null)
+      initialSelectionDone.current = false
     }
+    wasAuthenticated.current = isAuthenticated
   }, [isAuthenticated])
 
   const setCurrentParty = useCallback((partyId: string) => {

@@ -5,7 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { queryClient } from './lib/queryClient'
 import { AuthProvider } from './hooks/useAuth'
-import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { ErrorBoundary } from './components/organisms/shared'
 import './index.css'
 import App from './App.tsx'
 

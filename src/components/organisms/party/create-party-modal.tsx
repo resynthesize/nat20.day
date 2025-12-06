@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements } from '@stripe/react-stripe-js'
-import { supabase } from '../../lib/supabase'
-import { PaymentForm } from './PaymentForm'
+import { supabase } from '@/lib/supabase'
+import { PaymentForm } from './payment-form'
 
 interface CreatePartyModalProps {
   isOpen: boolean

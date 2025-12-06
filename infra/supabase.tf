@@ -13,6 +13,23 @@ resource "supabase_project" "main" {
 # Note: Avatars storage bucket is created via SQL migration (supabase_storage_bucket not supported by provider)
 # See: supabase/migrations/00003_avatars_storage.sql
 
+# Auth settings including redirect URLs for local development
+resource "supabase_settings" "main" {
+  project_ref = supabase_project.main.id
+
+  auth = jsonencode({
+    site_url = "https://${var.domain}"
+    additional_redirect_urls = [
+      "http://localhost:5173",
+      "http://localhost:5173/",
+      "http://localhost:5173/app",
+      "http://localhost:5173/**",
+      "http://localhost:3000/**",
+      "https://${var.domain}/**"
+    ]
+  })
+}
+
 # Note: Google OAuth provider configuration may need to be done via Supabase dashboard
 # or CLI as the Terraform provider support varies. The settings below document the intent.
 #

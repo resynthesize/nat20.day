@@ -136,7 +136,8 @@ const handler = createMcpHandler(
       DateRangeSchema.shape,
       { title: 'Get Party Availability', ...ReadOnlyAnnotations },
       async ({ party_id, from, to }, extra) => {
-        const userId = extra.authInfo?.clientId!
+        const userId = extra.authInfo?.clientId
+        if (!userId) throw new Error('Authentication required')
         await getMembership(userId, party_id)
 
         let query = supabase
@@ -159,7 +160,8 @@ const handler = createMcpHandler(
       SetAvailabilitySchema.shape,
       { title: 'Set Availability', ...WriteAnnotations },
       async ({ party_id, date, available }, extra) => {
-        const userId = extra.authInfo?.clientId!
+        const userId = extra.authInfo?.clientId
+        if (!userId) throw new Error('Authentication required')
         const member = await getMembership(userId, party_id)
 
         const { error } = await supabase
@@ -177,7 +179,8 @@ const handler = createMcpHandler(
       ClearAvailabilitySchema.shape,
       { title: 'Clear Availability', ...ClearAnnotations },
       async ({ party_id, date }, extra) => {
-        const userId = extra.authInfo?.clientId!
+        const userId = extra.authInfo?.clientId
+        if (!userId) throw new Error('Authentication required')
         const member = await getMembership(userId, party_id)
 
         await supabase.from('availability').delete().eq('party_member_id', member.id).eq('date', date)

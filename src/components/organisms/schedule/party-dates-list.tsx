@@ -9,7 +9,7 @@
 
 import { useState, useMemo } from 'react'
 import { parseISO, differenceInDays, isToday, isTomorrow } from 'date-fns'
-import { getDayOfWeek, formatDateDisplay } from '../../lib/dates'
+import { getDayOfWeek, formatDateDisplay } from '@/lib/dates'
 
 interface PartyDatesListProps {
   dates: string[]

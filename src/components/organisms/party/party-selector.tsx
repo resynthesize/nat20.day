@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { useParty } from '../../hooks/useParty'
-import { SkeletonBox } from '../ui/skeleton'
+import { useParty } from '@/hooks/useParty'
+import { SkeletonBox } from '@/components/organisms/shared/skeleton'
 
 interface PartySelectorProps {
   onCreateParty: () => void

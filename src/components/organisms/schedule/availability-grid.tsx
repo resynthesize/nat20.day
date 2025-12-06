@@ -4,8 +4,8 @@
  */
 
 import { memo, useMemo, useCallback } from 'react'
-import { formatDateDisplay, getDayOfWeek } from '../../lib/dates'
-import { PartyDatesList } from './PartyDatesList'
+import { formatDateDisplay, getDayOfWeek } from '@/lib/dates'
+import { PartyDatesList } from './party-dates-list'
 
 export interface GridMember {
   id: string

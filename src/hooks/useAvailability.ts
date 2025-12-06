@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
@@ -121,10 +121,10 @@ export function useAvailability({ partyId, daysOfWeek }: UseAvailabilityOptions)
     refetchOnReconnect: false,
   })
 
-  // Default values when no data
+  // Default values when no data - memoized to prevent dependency changes
   const dates = data?.dates ?? []
   const partyMembers = data?.partyMembers ?? []
-  const availability = data?.availability ?? []
+  const availability = useMemo(() => data?.availability ?? [], [data?.availability])
   const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch data') : null
 
   // Helper to update cache

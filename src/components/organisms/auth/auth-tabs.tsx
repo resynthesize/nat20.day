@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useAuth } from '../../hooks/useAuth'
-import { OAuthButton } from './OAuthButton'
-import { EmailAuth } from './EmailAuth'
+import { useAuth } from '@/hooks/useAuth'
+import { OAuthButton } from './oauth-button'
+import { EmailAuth } from './email-auth'
 
 export function AuthTabs() {
   const { signInWithGoogle, signInWithDiscord } = useAuth()

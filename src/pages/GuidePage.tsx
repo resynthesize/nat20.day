@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { LandingNav } from '../components/landing/LandingNav'
+import { LandingNav } from '../components/organisms/landing'
+import '../styles/guide.css'
 
 interface GuideSection {
   id: string
@@ -549,7 +550,11 @@ function InlineMarkdown({ text }: { text: string }) {
 
     // Add formatted element
     if (first.type === 'code') {
-      parts.push(<code key={keyIndex++} className="guide-inline-code">{first.match[1]}</code>)
+      parts.push(
+        <code key={keyIndex++} className="guide-inline-code">
+          {first.match[1]}
+        </code>
+      )
       remaining = remaining.slice(first.index + first.match[0].length)
     } else if (first.type === 'bold') {
       parts.push(<strong key={keyIndex++}>{first.match[1]}</strong>)
@@ -559,11 +564,21 @@ function InlineMarkdown({ text }: { text: string }) {
       const isExternal = href.startsWith('http')
       parts.push(
         isExternal ? (
-          <a key={keyIndex++} href={href} target="_blank" rel="noopener noreferrer" className="guide-link">
+          <a
+            key={keyIndex++}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="guide-link"
+          >
             {first.match[1]}
           </a>
         ) : (
-          <Link key={keyIndex++} to={href} className="guide-link">
+          <Link
+            key={keyIndex++}
+            to={href}
+            className="guide-link"
+          >
             {first.match[1]}
           </Link>
         )

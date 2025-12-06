@@ -6,8 +6,8 @@
  * the last member count for more accurate height estimation.
  */
 
-import { SkeletonBox } from '../ui/skeleton'
-import { STORAGE_KEYS } from '../../lib/constants'
+import { SkeletonBox } from '@/components/organisms/shared/skeleton'
+import { STORAGE_KEYS } from '@/lib/constants'
 
 const STORAGE_KEY = STORAGE_KEYS.LAST_MEMBER_COUNT
 const DEFAULT_MEMBER_COUNT = 6

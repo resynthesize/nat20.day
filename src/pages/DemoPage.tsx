@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { generateDates } from '../lib/dates'
-import { AvailabilityGrid, type GridMember, type GridAvailability } from '../components/schedule/AvailabilityGrid'
-import { LandingNav } from '../components/landing/LandingNav'
+import { AvailabilityGrid, type GridMember, type GridAvailability } from '../components/organisms/schedule'
+import { LandingNav } from '../components/organisms/landing'
+import '../styles/demo.css'
 
 const DEMO_PARTY_ID = 'party_DEMO0000'
 
@@ -131,12 +132,12 @@ export function DemoPage() {
     <div className="demo-page">
       <LandingNav />
 
-      <div className="demo-content">
+      <div className="demo-container">
         <div className="demo-header">
-          <h1 className="demo-title">The Tavern Regulars</h1>
+          <h1>The Tavern Regulars</h1>
           <span className="demo-badge">Demo Party</span>
         </div>
-        <p className="demo-subtitle">
+        <p className="demo-description">
           This is a demo party showing how nat20.day helps coordinate schedules.
           Try clicking on cells to toggle availability!
         </p>
@@ -148,14 +149,14 @@ export function DemoPage() {
           onToggle={handleToggle}
         />
 
-        <div className="demo-cta-section">
+        <div className="demo-cta">
           <h2>Ready to coordinate your own party?</h2>
           <p>Create your party and start scheduling game nights in minutes.</p>
           <div className="demo-cta-buttons">
-            <Link to="/app" className="cta-button cta-button-primary">
+            <Link to="/app" className="demo-button primary">
               Start Your Party — $10/year
             </Link>
-            <Link to="/#pricing" className="cta-button cta-button-secondary">
+            <Link to="/#pricing" className="demo-button secondary">
               View Pricing
             </Link>
           </div>
@@ -163,7 +164,7 @@ export function DemoPage() {
 
         <div className="demo-features">
           <h3>In your own party, you can:</h3>
-          <ul className="demo-feature-list">
+          <ul>
             <li>Toggle your availability with a single click</li>
             <li>See real-time updates when party members respond</li>
             <li>Invite members via email</li>
@@ -173,7 +174,7 @@ export function DemoPage() {
       </div>
 
       <footer className="demo-footer">
-        <Link to="/">← Back to home</Link>
+        <Link to="/" className="demo-back-link">← Back to home</Link>
       </footer>
     </div>
   )

@@ -62,15 +62,15 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="error-boundary-actions">
               <button
                 type="button"
-                onClick={this.handleRetry}
                 className="error-boundary-button primary"
+                onClick={this.handleRetry}
               >
                 Try Again
               </button>
               <button
                 type="button"
-                onClick={this.handleReload}
                 className="error-boundary-button secondary"
+                onClick={this.handleReload}
               >
                 Reload Page
               </button>
@@ -78,7 +78,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <p className="error-boundary-hint">
               If this keeps happening, try clearing your browser cache or{' '}
-              <a href="https://github.com/resynthesize/nat20.day/issues" target="_blank" rel="noopener noreferrer">
+              <a
+                href="https://github.com/resynthesize/nat20.day/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 report the issue
               </a>.
             </p>

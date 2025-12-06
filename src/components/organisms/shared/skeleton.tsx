@@ -7,7 +7,7 @@
  * - SkeletonText: Inline text placeholders that match text height
  */
 
-import './Skeleton.css'
+import '@/components/ui/skeleton/Skeleton.css'
 
 interface SkeletonBoxProps {
   width?: string | number
