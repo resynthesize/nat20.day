@@ -21,7 +21,10 @@ nat20.day is a scheduling tool designed for tabletop gaming groups. Whether you 
 ### Creating an Account
 
 1. Visit [nat20.day/app](/app) and click **Sign Up**
-2. Sign in with your Google or Discord account
+2. Choose your sign-in method:
+   - **Google** - Sign in with your Google account
+   - **Discord** - Sign in with your Discord account
+   - **Email** - Enter your email to receive a magic link (no password needed)
 3. You'll be automatically logged in and ready to go
 
 ### Joining a Party
@@ -40,6 +43,41 @@ Once logged in, you can:
 `,
   },
   {
+    id: 'profile',
+    title: 'Profile Management',
+    content: `
+## Your Profile
+
+Customize how you appear to your party members.
+
+### Accessing Your Profile
+
+Click your avatar or name in the header, then select **Profile**. Or go directly to [/app/profile](/app/profile).
+
+### Display Name
+
+Your display name is how you appear to other party members. By default, it's taken from your Google or Discord account, but you can change it to anything you like.
+
+### Avatar
+
+Click your avatar to upload a new photo. Images must be under 2MB. Your avatar appears in the schedule grid and when you're hosting a session.
+
+### Address
+
+Add your address if you plan to host sessions. When you're selected as a host for a session, your address will be pre-filled (only visible to party members).
+
+### Per-Party Display Names
+
+Want to use different names in different parties? You can set a custom display name for each party you're in:
+
+1. Go to your [Profile](/app/profile)
+2. Scroll to **Party Display Names**
+3. Set a different name for each party
+
+This is useful if you go by different names in different gaming groups.
+`,
+  },
+  {
     id: 'managing-availability',
     title: 'Managing Availability',
     content: `
@@ -49,7 +87,9 @@ Once logged in, you can:
 
 The main view shows a grid with:
 - **Rows**: Each party member
-- **Columns**: Upcoming Thursdays and Fridays (the next 8 weeks)
+- **Columns**: Your party's scheduled days (configurable by admins)
+
+By default, the grid shows 8 weeks of dates. Admins can configure which days of the week appear in the schedule (see [Admin Features](/guide/admin-features)).
 
 ### Setting Your Availability
 
@@ -60,6 +100,22 @@ Click any cell in **your row** to toggle your availability:
 
 Changes are saved instantly and visible to all party members in real-time.
 
+### Viewing More Dates
+
+Scroll the grid horizontally to see more dates:
+- **Scroll right** to see future dates (loads automatically)
+- **Scroll left** to see past dates (back to when the party was created)
+
+The grid loads more dates as you scroll, so you can view as far into the past or future as you need.
+
+### Session Tracker
+
+Above the grid, you'll see a session tracker that shows:
+- **Days since last session** - How long it's been since your group played
+- **"Did you play?" prompt** - If everyone was available on a past date but no session was logged, you can confirm it with one click
+
+This helps your group keep track of how often you're meeting.
+
 ### Finding Good Dates
 
 Look for columns where most members show green checkmarks. Those are your best options for game night!
@@ -69,6 +125,63 @@ Look for columns where most members show green checkmarks. Those are your best o
 - Update your availability as soon as you know your schedule
 - If plans change, just click the cell again to update
 - Other members can see your updates immediately
+`,
+  },
+  {
+    id: 'session-scheduling',
+    title: 'Session Scheduling',
+    content: `
+## Scheduling Sessions
+
+Plan your game nights with full session details.
+
+### Scheduling a Session
+
+1. Click on a date in the schedule grid
+2. Click **Schedule Session** (or click the scheduled session indicator to edit)
+3. Fill in the session details:
+   - **Start Time** - Select a preset time or enter a custom time
+   - **Host** - Choose a party member or enter a custom location
+   - **Address/URL** - Physical address or virtual meeting link
+   - **Virtual Meeting** - Toggle if it's online (Zoom, Discord, etc.)
+4. Click **Schedule Session** to save
+
+### Session Details
+
+When scheduling, you can specify:
+
+#### Host Options
+- **Party Member** - Select who's hosting; their address auto-fills if set in their profile
+- **Custom Location** - Enter a location name (e.g., "Game Store", "Library")
+
+#### Meeting Type
+- **In-Person** - Enter a physical address (with autocomplete)
+- **Virtual** - Enter a meeting URL (Zoom, Discord, etc.)
+
+#### Time
+Choose from preset times (configured by admins) or enter a custom time.
+
+### Viewing Scheduled Sessions
+
+Scheduled sessions appear in two places:
+- **In the grid** - A calendar icon on the date cell
+- **Upcoming Dates section** - Shows the next scheduled session with details
+
+### Editing Sessions
+
+Click on a scheduled session in the grid to:
+- Change the host, location, or time
+- Toggle between virtual and in-person
+- Update the address or meeting URL
+
+### Canceling Sessions
+
+To cancel a scheduled session:
+1. Click on the session in the grid
+2. Click **Cancel Session** at the bottom of the modal
+3. Confirm the cancellation
+
+Canceling removes the session but keeps everyone's availability intact.
 `,
   },
   {
@@ -141,6 +254,37 @@ In the **Settings** tab you can:
 - View and manage admin list
 - Remove admin privileges from others
 
+### Schedule Days
+
+Configure which days of the week appear in the schedule:
+
+1. Go to **Settings** tab
+2. Under **Schedule Days**, select the days you play
+3. Click **Save Settings**
+
+Common configurations:
+- **Friday + Saturday** (default) - Weekend gaming
+- **Thursday + Friday** - Weeknight games
+- **Any day** - Maximum flexibility
+
+### Default Host Settings
+
+Set defaults for new sessions:
+- **Default Host** - Pre-select a party member who usually hosts
+- **Default Location** - Pre-fill a custom location name
+
+These defaults appear when scheduling new sessions, saving time.
+
+### Time Presets
+
+Customize the quick-select time options shown when scheduling sessions:
+
+1. Go to **Settings** tab
+2. Under **Time Presets**, configure your common start times
+3. Click **Save Settings**
+
+This lets your group quickly select from times like "6:00 PM", "7:30 PM" without typing.
+
 ### Billing
 
 In the **Billing** tab you can:
@@ -195,9 +339,13 @@ curl -H "Authorization: Bearer nat20_xxx" \\
 
 | Endpoint | Description |
 |----------|-------------|
+| GET /api/v1/me | Get your profile |
 | GET /api/v1/parties | List your parties |
-| GET /api/v1/availability | Get party availability |
-| PUT /api/v1/availability | Set your availability |
+| GET /api/v1/parties/:id/availability | Get party availability |
+| PUT /api/v1/availability/:memberId/:date | Set availability for a date |
+| DELETE /api/v1/availability/:memberId/:date | Clear availability for a date |
+
+See the [API docs](/docs) for full request/response details.
 
 ### MCP Integration
 
@@ -210,13 +358,13 @@ https://nat20.day/api/mcp
 
 This allows AI assistants (like Claude) to:
 - Check party availability
-- Set your availability
+- Set or clear your availability
 - View party information
+- Schedule and manage sessions
 
 ### Rate Limits
 
-- 100 requests per minute per token
-- Exceeding limits returns 429 Too Many Requests
+There are currently no rate limits, but please be respectful of server resources
 `,
   },
   {
@@ -266,7 +414,24 @@ Your email is tied to your Google/Discord account. To use a different email:
 
 ### The schedule shows wrong dates
 
-The schedule always shows Thursdays and Fridays for the next 8 weeks. If dates seem wrong, check your system clock or browser timezone.
+The schedule shows dates based on your party's configured days (set by admins in Settings). If dates seem wrong:
+- Check which days are configured in Settings > Schedule Days
+- Check your system clock or browser timezone
+- Ask a party admin if the days need to be updated
+
+### Session scheduling issues
+
+**Can't schedule a session:**
+- Only admins can schedule sessions
+- Make sure you've selected a date in the grid first
+
+**Session details not showing:**
+- Click on a scheduled date (marked with a calendar icon) to view details
+- Check the Upcoming Dates section for the next session
+
+**Address autocomplete not working:**
+- This feature requires an internet connection
+- You can always type the address manually
 
 ### Getting More Help
 
