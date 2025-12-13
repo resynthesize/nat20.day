@@ -20,7 +20,7 @@ import {
 } from "../api.js"
 import { getServiceClient } from "../supabase.js"
 import { getStripeClient, getStripePriceId } from "../stripe/client.js"
-import { CurrentUser, AuthenticationLive, CurrentUserStub } from "../handlers/index.js"
+import { CurrentUser, SessionAuthenticationLive, CurrentUserStub } from "../handlers/index.js"
 
 // ============================================================================
 // Supabase Helper
@@ -373,4 +373,4 @@ export const SignupHandlers = HttpApiBuilder.group(Nat20Api, "signup", (handlers
         })
       })
     )
-).pipe(Layer.provide([AuthenticationLive, CurrentUserStub]))
+).pipe(Layer.provide([SessionAuthenticationLive, CurrentUserStub]))

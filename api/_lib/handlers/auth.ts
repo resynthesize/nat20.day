@@ -10,12 +10,13 @@ import {
   Unauthorized,
   CurrentUser,
   Authentication,
+  SessionAuthentication,
 } from "../api.js"
 import { getServiceClient } from "../supabase.js"
 import { hashToken, TOKEN_PREFIX } from "../crypto.js"
 
 // Re-export for use by other modules
-export { CurrentUser, Authentication }
+export { CurrentUser, Authentication, SessionAuthentication }
 
 /**
  * Stub layer for CurrentUser - satisfies type checker at composition time.
@@ -101,6 +102,46 @@ export const AuthenticationLive = Layer.effect(
           }
 
           console.log("[Auth] JWT validated, user ID:", userData.user.id)
+          return { profileId: userData.user.id }
+        }),
+    })
+  )
+)
+
+/**
+ * Session-only authentication implementation layer
+ *
+ * Only validates Supabase JWTs - rejects nat20_ API tokens.
+ * Used for billing endpoints that should not be accessible via API tokens.
+ */
+export const SessionAuthenticationLive = Layer.effect(
+  SessionAuthentication,
+  Effect.succeed(
+    SessionAuthentication.of({
+      bearer: (redactedToken) =>
+        Effect.gen(function* () {
+          const token = Redacted.value(redactedToken)
+          const supabase = getServiceClient()
+
+          // Reject API tokens - billing requires session auth
+          if (token.startsWith(TOKEN_PREFIX)) {
+            return yield* Effect.fail(
+              new Unauthorized({ message: "Session authentication required" })
+            )
+          }
+
+          // Validate Supabase JWT
+          const { data: userData, error: userError } = yield* Effect.tryPromise({
+            try: () => supabase.auth.getUser(token),
+            catch: () => new Unauthorized({ message: "Invalid session token" }),
+          })
+
+          if (userError || !userData.user) {
+            return yield* Effect.fail(
+              new Unauthorized({ message: "Invalid or expired session" })
+            )
+          }
+
           return { profileId: userData.user.id }
         }),
     })

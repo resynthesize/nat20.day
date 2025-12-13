@@ -29,7 +29,7 @@ import {
   reactivateSubscription,
   createSubscriptionWithPaymentIntent,
 } from "../stripe/operations.js"
-import { CurrentUser, AuthenticationLive, CurrentUserStub } from "../handlers/index.js"
+import { CurrentUser, SessionAuthenticationLive, CurrentUserStub } from "../handlers/index.js"
 import {
   requirePartyAdmin,
   requirePartyMember,
@@ -306,4 +306,4 @@ export const BillingHandlers = HttpApiBuilder.group(Nat20Api, "billing", (handle
         })
       })
     )
-).pipe(Layer.provide([AuthenticationLive, CurrentUserStub]))
+).pipe(Layer.provide([SessionAuthenticationLive, CurrentUserStub]))

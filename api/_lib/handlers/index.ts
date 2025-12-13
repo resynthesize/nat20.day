@@ -10,7 +10,7 @@ import { UserHandlers } from "./user.js"
 import { AvailabilityHandlers } from "./availability.js"
 
 // Re-export auth components for external use
-export { AuthenticationLive, CurrentUserStub, CurrentUser, Authentication } from "./auth.js"
+export { AuthenticationLive, SessionAuthenticationLive, CurrentUserStub, CurrentUser, Authentication, SessionAuthentication } from "./auth.js"
 
 // Re-export individual handler groups
 export { UserHandlers } from "./user.js"

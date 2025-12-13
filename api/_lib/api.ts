@@ -278,6 +278,16 @@ export class Authentication extends HttpApiMiddleware.Tag<Authentication>()(
   }
 ) {}
 
+/** Session-only authentication - rejects API tokens, only allows Supabase JWTs */
+export class SessionAuthentication extends HttpApiMiddleware.Tag<SessionAuthentication>()(
+  "SessionAuthentication",
+  {
+    failure: Unauthorized,
+    provides: CurrentUser,
+    security: { bearer: bearerSecurity },
+  }
+) {}
+
 // ============================================================================
 // Endpoint Definitions
 // ============================================================================
@@ -459,7 +469,7 @@ const billingGroup = HttpApiGroup.make("billing")
   .add(cancelSubscription)
   .add(reactivateSubscription)
   .add(getSubscription)
-  .middleware(Authentication)
+  .middleware(SessionAuthentication)
   .annotate(OpenApi.Title, "Billing")
 
 // Signup group: signupStart is unauthenticated
@@ -467,10 +477,10 @@ const signupPublicGroup = HttpApiGroup.make("signupPublic")
   .add(signupStart)
   .annotate(OpenApi.Title, "Signup")
 
-// Signup completion requires authentication
+// Signup completion requires session authentication (no API tokens)
 const signupGroup = HttpApiGroup.make("signup")
   .add(signupComplete)
-  .middleware(Authentication)
+  .middleware(SessionAuthentication)
   .annotate(OpenApi.Title, "Signup (Authenticated)")
 
 // ============================================================================
