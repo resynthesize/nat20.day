@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { formatDateDisplay, getDayOfWeek } from '@/lib/dates'
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
-import type { PartyMember, PartyWithAdmins } from '@/lib/schemas'
+import { Select } from '@/components/ui/select'
+import type { PartyMember, PartyWithAdmins, SessionWithHost } from '@/lib/schemas'
 
 interface ScheduleSessionModalProps {
   isOpen: boolean
@@ -14,10 +15,24 @@ interface ScheduleSessionModalProps {
     hostLocation?: string | null
     hostAddress?: string | null
     isVirtual?: boolean
+    startTime?: string | null
   }) => Promise<void>
+  /** If provided, this is an edit of an existing session */
+  sessionId?: string
+  /** Existing session data for pre-populating when editing */
+  existingSession?: SessionWithHost | null
+  /** Called when user wants to cancel/delete the session */
+  onCancel?: (sessionId: string) => Promise<void>
 }
 
 type HostType = 'member' | 'location'
+
+const TIME_PRESETS = [
+  { label: '5 PM', value: '17:00' },
+  { label: '6 PM', value: '18:00' },
+  { label: '7 PM', value: '19:00' },
+  { label: '8 PM', value: '20:00' },
+] as const
 
 export function ScheduleSessionModal({
   isOpen,
@@ -26,39 +41,45 @@ export function ScheduleSessionModal({
   partyMembers,
   party,
   onConfirm,
+  sessionId,
+  existingSession,
+  onCancel,
 }: ScheduleSessionModalProps) {
   const [hostType, setHostType] = useState<HostType>('member')
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
   const [locationName, setLocationName] = useState('')
   const [address, setAddress] = useState('')
   const [isVirtual, setIsVirtual] = useState(false)
+  const [startTime, setStartTime] = useState('')
+  const [showCustomTime, setShowCustomTime] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
-  // Pre-populate from party defaults when modal opens
+  // Check if current time matches a preset
+  const isPresetTime = TIME_PRESETS.some((p) => p.value === startTime)
+
+  const isEditing = !!sessionId
+
+  // Pre-populate form when modal opens
   useEffect(() => {
-    if (isOpen && party) {
-      if (party.default_host_member_id) {
-        setHostType('member')
-        setSelectedMemberId(party.default_host_member_id)
-        // Get member's address if they have one
-        const member = partyMembers.find((m) => m.id === party.default_host_member_id)
-        setAddress(member?.profiles?.address ?? '')
-        setIsVirtual(false)
-      } else if (party.default_host_location) {
-        setHostType('location')
-        setLocationName(party.default_host_location)
-        setAddress('')
-        setIsVirtual(false)
-      } else {
-        // No default - reset form
-        setHostType('member')
-        setSelectedMemberId('')
-        setLocationName('')
-        setAddress('')
-        setIsVirtual(false)
-      }
-    }
-  }, [isOpen, party, partyMembers])
+    if (!isOpen) return
+
+    // Determine initial values: existing session > party defaults > empty
+    const memberId = existingSession?.host_member_id ?? party?.default_host_member_id ?? null
+    const location = existingSession?.host_location ?? party?.default_host_location ?? null
+    const member = memberId ? partyMembers.find((m) => m.id === memberId) : null
+
+    setHostType(location && !memberId ? 'location' : 'member')
+    setSelectedMemberId(memberId ?? '')
+    setLocationName(location ?? '')
+    setAddress(existingSession?.host_address ?? member?.profiles?.address ?? '')
+    setIsVirtual(existingSession?.is_virtual ?? false)
+    const existingTime = existingSession?.start_time ?? ''
+    setStartTime(existingTime)
+    // Show custom input if existing time doesn't match a preset
+    const matchesPreset = TIME_PRESETS.some((p) => p.value === existingTime)
+    setShowCustomTime(existingTime !== '' && !matchesPreset)
+  }, [isOpen, existingSession, party, partyMembers])
 
   // When member changes, update address from their profile
   useEffect(() => {
@@ -70,7 +91,7 @@ export function ScheduleSessionModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (saving) return
+    if (saving || cancelling) return
 
     setSaving(true)
     try {
@@ -79,10 +100,22 @@ export function ScheduleSessionModal({
         hostLocation: hostType === 'location' ? locationName || null : null,
         hostAddress: address || null,
         isVirtual,
+        startTime: startTime || null,
       })
       onClose()
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleCancelSession = async () => {
+    if (!sessionId || !onCancel || cancelling || saving) return
+    setCancelling(true)
+    try {
+      await onCancel(sessionId)
+      onClose()
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -92,7 +125,7 @@ export function ScheduleSessionModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Schedule Session</h2>
+          <h2>{isEditing ? 'Edit Session' : 'Schedule Session'}</h2>
           <button type="button" className="modal-close" onClick={onClose}>
             &times;
           </button>
@@ -106,6 +139,59 @@ export function ScheduleSessionModal({
               <span className="schedule-modal-date-text">
                 {getDayOfWeek(date)}, {formatDateDisplay(date)}
               </span>
+            </div>
+
+            {/* Start time */}
+            <div className="schedule-modal-field">
+              <label>Start Time (optional)</label>
+              <div className="time-preset-group">
+                {TIME_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    className={`time-preset-btn ${startTime === preset.value && !showCustomTime ? 'selected' : ''}`}
+                    onClick={() => {
+                      setStartTime(preset.value)
+                      setShowCustomTime(false)
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`time-preset-btn ${showCustomTime || (startTime && !isPresetTime) ? 'selected' : ''}`}
+                  onClick={() => {
+                    setShowCustomTime(true)
+                    if (isPresetTime) setStartTime('')
+                  }}
+                >
+                  Other
+                </button>
+                {startTime && (
+                  <button
+                    type="button"
+                    className="time-preset-btn time-preset-clear"
+                    onClick={() => {
+                      setStartTime('')
+                      setShowCustomTime(false)
+                    }}
+                    title="Clear time"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {showCustomTime && (
+                <input
+                  id="startTime"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="schedule-modal-input schedule-modal-time"
+                  autoFocus
+                />
+              )}
             </div>
 
             {/* Host type selection */}
@@ -139,20 +225,15 @@ export function ScheduleSessionModal({
             {hostType === 'member' ? (
               <div className="schedule-modal-field">
                 <label htmlFor="hostMember">Host</label>
-                <select
-                  id="hostMember"
+                <Select
                   value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                  className="schedule-modal-select"
-                >
-                  <option value="">Select a host...</option>
-                  {partyMembers.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.profiles?.display_name || member.name}
-                      {member.profiles?.address ? ' (has address)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedMemberId}
+                  placeholder="Select a host..."
+                  options={partyMembers.map((member) => ({
+                    value: member.id,
+                    label: member.profiles?.display_name || member.name,
+                  }))}
+                />
               </div>
             ) : (
               <div className="schedule-modal-field">
@@ -209,20 +290,31 @@ export function ScheduleSessionModal({
           </div>
 
           <div className="modal-footer">
+            {isEditing && onCancel && (
+              <button
+                type="button"
+                className="modal-button modal-button-danger"
+                onClick={handleCancelSession}
+                disabled={saving || cancelling}
+              >
+                {cancelling ? 'Cancelling...' : 'Cancel Session'}
+              </button>
+            )}
+            <div className="modal-footer-spacer" />
             <button
               type="button"
               className="modal-button modal-button-secondary"
               onClick={onClose}
-              disabled={saving}
+              disabled={saving || cancelling}
             >
-              Cancel
+              Close
             </button>
             <button
               type="submit"
               className="modal-button modal-button-primary"
-              disabled={saving}
+              disabled={saving || cancelling}
             >
-              {saving ? 'Scheduling...' : 'Schedule Session'}
+              {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Schedule Session'}
             </button>
           </div>
         </form>

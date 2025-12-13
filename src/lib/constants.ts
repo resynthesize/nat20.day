@@ -53,8 +53,12 @@ export const UI_TIMING = {
 // =============================================================================
 
 export const SCHEDULE = {
-  /** Number of weeks to display in the schedule grid */
+  /** Number of weeks to display in the schedule grid (initial load) */
   WEEKS_TO_DISPLAY: 8,
+  /** Number of weeks to fetch per chunk during infinite scroll */
+  WEEKS_PER_CHUNK: 4,
+  /** Pixels from scroll edge to trigger loading more dates */
+  SCROLL_THRESHOLD: 200,
   /** Default days of week for schedule (4 = Thursday, 5 = Friday) */
   DEFAULT_DAYS: [4, 5] as readonly number[],
 } as const

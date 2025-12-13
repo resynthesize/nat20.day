@@ -35,6 +35,7 @@ export const PartySchema = z.object({
   id: z.string(),
   name: z.string(),
   created_at: z.string(),
+  created_by: z.string().nullable().optional(),
   days_of_week: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
   theme: ThemeIdSchema.optional().default('dnd'),
   default_host_member_id: z.string().nullable().optional(),
@@ -114,6 +115,7 @@ export const SessionSchema = z.object({
   host_location: z.string().nullable().optional(),
   host_address: z.string().nullable().optional(),
   is_virtual: z.boolean().optional().default(false),
+  start_time: z.string().nullable().optional(),
 })
 
 export type Session = z.infer<typeof SessionSchema>

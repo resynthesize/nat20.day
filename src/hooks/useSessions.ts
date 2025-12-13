@@ -20,6 +20,7 @@ interface ScheduleSessionOptions {
   hostLocation?: string | null
   hostAddress?: string | null
   isVirtual?: boolean
+  startTime?: string | null
 }
 
 interface UseSessionsReturn {
@@ -209,6 +210,7 @@ export function useSessions({
         host_location: options.hostLocation || null,
         host_address: options.hostAddress || null,
         is_virtual: options.isVirtual ?? false,
+        start_time: options.startTime || null,
       })
 
       if (error) throw error
@@ -248,6 +250,7 @@ export function useSessions({
           host_location: options.hostLocation || null,
           host_address: options.hostAddress || null,
           is_virtual: options.isVirtual ?? false,
+          start_time: options.startTime || null,
         })
         .eq('id', sessionId)
         .eq('party_id', partyId)

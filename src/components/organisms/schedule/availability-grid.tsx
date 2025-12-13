@@ -3,9 +3,8 @@
  * Used by both the main ScheduleGrid (with hooks) and DemoPage (with static data)
  */
 
-import { memo, useMemo, useCallback } from 'react'
+import { memo, useMemo, useCallback, type RefObject } from 'react'
 import { formatDateDisplay, getDayOfWeek } from '@/lib/dates'
-import { PartyDatesList } from './party-dates-list'
 
 export interface GridMember {
   id: string
@@ -23,6 +22,7 @@ export interface GridAvailability {
 
 export interface ScheduledSession {
   date: string
+  sessionId: string
   hostName?: string | null
 }
 
@@ -35,6 +35,10 @@ interface AvailabilityGridProps {
   showAdminBadge?: boolean
   readOnly?: boolean
   scheduledSessions?: ScheduledSession[]
+  // Infinite scroll props
+  containerRef?: RefObject<HTMLDivElement | null>
+  isLoadingPast?: boolean
+  isLoadingFuture?: boolean
 }
 
 function AvailabilityGridComponent({
@@ -46,6 +50,9 @@ function AvailabilityGridComponent({
   showAdminBadge,
   readOnly = false,
   scheduledSessions = [],
+  containerRef,
+  isLoadingPast = false,
+  isLoadingFuture = false,
 }: AvailabilityGridProps) {
   // Memoize the availability lookup map - only rebuilds when availability changes
   const availabilityMap = useMemo(() => {
@@ -114,9 +121,14 @@ function AvailabilityGridComponent({
   )
 
   return (
-    <div className="schedule-container">
+    <div className="schedule-container" ref={containerRef}>
       {showAdminBadge && (
         <div className="admin-badge">Admin Mode - You can edit all schedules</div>
+      )}
+      {isLoadingPast && (
+        <div className="scroll-loader scroll-loader-left">
+          <span className="loader-spinner" />
+        </div>
       )}
       <div
         className="schedule-grid"
@@ -207,6 +219,11 @@ function AvailabilityGridComponent({
           )
         })}
       </div>
+      {isLoadingFuture && (
+        <div className="scroll-loader scroll-loader-right">
+          <span className="loader-spinner" />
+        </div>
+      )}
 
       <div className="legend">
         <span className="legend-item">
@@ -222,8 +239,6 @@ function AvailabilityGridComponent({
           Not set
         </span>
       </div>
-
-      <PartyDatesList dates={dates} isAllAvailable={isAllAvailable} />
     </div>
   )
 }
