@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { formatDateDisplay, getDayOfWeek } from '@/lib/dates'
+import { getEffectivePresets } from '@/lib/time-utils'
+import { getDisplayName } from '@/lib/display-name'
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import { Select } from '@/components/ui/select'
 import type { PartyMember, PartyWithAdmins, SessionWithHost } from '@/lib/schemas'
@@ -27,13 +29,6 @@ interface ScheduleSessionModalProps {
 
 type HostType = 'member' | 'location'
 
-const TIME_PRESETS = [
-  { label: '5 PM', value: '17:00' },
-  { label: '6 PM', value: '18:00' },
-  { label: '7 PM', value: '19:00' },
-  { label: '8 PM', value: '20:00' },
-] as const
-
 export function ScheduleSessionModal({
   isOpen,
   onClose,
@@ -55,8 +50,11 @@ export function ScheduleSessionModal({
   const [saving, setSaving] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
+  // Get time presets from party settings (or defaults)
+  const timePresets = getEffectivePresets(party?.time_options, party?.default_time_presets)
+
   // Check if current time matches a preset
-  const isPresetTime = TIME_PRESETS.some((p) => p.value === startTime)
+  const isPresetTime = timePresets.some((p) => p.value === startTime)
 
   const isEditing = !!sessionId
 
@@ -77,9 +75,9 @@ export function ScheduleSessionModal({
     const existingTime = existingSession?.start_time ?? ''
     setStartTime(existingTime)
     // Show custom input if existing time doesn't match a preset
-    const matchesPreset = TIME_PRESETS.some((p) => p.value === existingTime)
+    const matchesPreset = timePresets.some((p) => p.value === existingTime)
     setShowCustomTime(existingTime !== '' && !matchesPreset)
-  }, [isOpen, existingSession, party, partyMembers])
+  }, [isOpen, existingSession, party, partyMembers, timePresets])
 
   // When member changes, update address from their profile
   useEffect(() => {
@@ -145,7 +143,7 @@ export function ScheduleSessionModal({
             <div className="schedule-modal-field">
               <label>Start Time (optional)</label>
               <div className="time-preset-group">
-                {TIME_PRESETS.map((preset) => (
+                {timePresets.map((preset) => (
                   <button
                     key={preset.value}
                     type="button"
@@ -231,7 +229,7 @@ export function ScheduleSessionModal({
                   placeholder="Select a host..."
                   options={partyMembers.map((member) => ({
                     value: member.id,
-                    label: member.profiles?.display_name || member.name,
+                    label: getDisplayName(member),
                   }))}
                 />
               </div>

@@ -15,6 +15,7 @@ import { ScheduleGrid } from './components/organisms/schedule'
 import { ProfilePage } from './components/organisms/profile'
 import { AdminPanel } from './components/organisms/admin'
 import { PartySelector, CreatePartyModal } from './components/organisms/party'
+import { MobileMenu } from './components/organisms/header'
 import { STORAGE_KEYS, UI_TIMING } from './lib/constants'
 import './styles/index.css'
 
@@ -138,38 +139,49 @@ function AuthenticatedApp() {
           <PartySelector onCreateParty={() => setShowCreatePartyModal(true)} />
         </div>
         <div className="header-right">
-          {isAdmin && (
-            <Link to="/app/admin" className="admin-link">
-              Settings
-            </Link>
-          )}
-          <Link to="/app/profile" className="user-info">
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.display_name}
-                className="user-avatar"
-              />
-            ) : (
-              <div className="user-avatar-placeholder">
-                {(profile?.display_name || user?.email || '?').charAt(0).toUpperCase()}
-              </div>
+          {/* Desktop: show all items */}
+          <div className="header-right-desktop">
+            {isAdmin && (
+              <Link to="/app/admin" className="admin-link">
+                Settings
+              </Link>
             )}
-            <span className="user-name">{profile?.display_name || user?.email}</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              signOut()
-                .then(() => {
-                  window.location.href = '/'
-                })
-                .catch((err) => console.error('Sign out failed:', err))
-            }}
-            className="sign-out-button"
-          >
-            Sign Out
-          </button>
+            <Link to="/app/profile" className="user-info">
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.display_name}
+                  className="user-avatar"
+                />
+              ) : (
+                <div className="user-avatar-placeholder">
+                  {(profile?.display_name || user?.email || '?').charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="user-name">{profile?.display_name || user?.email}</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                signOut()
+                  .then(() => {
+                    window.location.href = '/'
+                  })
+                  .catch((err) => console.error('Sign out failed:', err))
+              }}
+              className="sign-out-button"
+            >
+              Sign Out
+            </button>
+          </div>
+
+          {/* Mobile: hamburger menu */}
+          <MobileMenu
+            isAdmin={isAdmin}
+            profile={profile}
+            user={user}
+            onSignOut={signOut}
+          />
         </div>
       </header>
 

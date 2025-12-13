@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import { ApiTokens } from './api-tokens'
+import { PartyDisplayNames } from './party-display-names'
 
 export function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth()
@@ -21,8 +22,10 @@ export function ProfilePage() {
   const { uploadAvatar, updateDisplayName, updateAddress, uploading, saving, error, clearError } =
     useProfile({
       userId: user?.id || '',
-      onSuccess: () => {
-        refreshProfile()
+      onSuccess: async () => {
+        // Wait for profile to refresh before clearing edited state
+        // This prevents the form from briefly showing the old value
+        await refreshProfile()
         setEditedName(null)
         setEditedAddress(null)
       },
@@ -149,6 +152,8 @@ export function ProfilePage() {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
+
+        <PartyDisplayNames userId={user?.id ?? null} globalDisplayName={displayName} />
 
         <ApiTokens userId={user?.id ?? null} />
       </div>

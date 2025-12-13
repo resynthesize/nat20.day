@@ -15,9 +15,14 @@ export async function fetchParties(userId: string): Promise<PartyWithAdmins[]> {
       id,
       name,
       created_at,
+      created_by,
       is_demo,
       days_of_week,
       theme,
+      default_host_member_id,
+      default_host_location,
+      time_options,
+      default_time_presets,
       party_admins (
         profile_id
       )
@@ -56,9 +61,11 @@ export async function fetchPartyMembers(partyId: string): Promise<PartyMember[]>
       email,
       profile_id,
       created_at,
+      display_name,
       profiles (
         display_name,
-        avatar_url
+        avatar_url,
+        address
       )
     `)
     .eq('party_id', partyId)

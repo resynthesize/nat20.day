@@ -53,6 +53,8 @@ export function AddressAutocomplete({
     onChange(newValue)
   }
 
+  const inputClass = className || 'schedule-modal-input'
+
   // Fallback to plain input if Google Places is not available
   if (!apiKey || loadError) {
     return (
@@ -62,7 +64,7 @@ export function AddressAutocomplete({
         onChange={handleInputChange}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full px-3 py-2 bg-surface-secondary border border-border-primary rounded-md text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+        className={inputClass}
       />
     )
   }
@@ -76,7 +78,8 @@ export function AddressAutocomplete({
         onChange={handleInputChange}
         placeholder="Loading..."
         disabled
-        className={`w-full px-3 py-2 bg-surface-secondary border border-border-primary rounded-md text-text-primary placeholder:text-text-muted opacity-50 cursor-not-allowed ${className}`}
+        className={inputClass}
+        style={{ opacity: 0.5, cursor: 'not-allowed' }}
       />
     )
   }
@@ -96,7 +99,7 @@ export function AddressAutocomplete({
         onChange={handleInputChange}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full px-3 py-2 bg-surface-secondary border border-border-primary rounded-md text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+        className={inputClass}
       />
     </Autocomplete>
   )

@@ -77,3 +77,9 @@ variable "stripe_publishable_key" {
   description = "Stripe publishable API key (pk_live_... or pk_test_...)"
   type        = string
 }
+
+# Google Places API (for address autocomplete)
+variable "google_places_api_key" {
+  description = "Google Places API key for address autocomplete"
+  type        = string
+}

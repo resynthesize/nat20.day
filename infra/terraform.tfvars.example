@@ -22,3 +22,7 @@ google_client_secret = ""
 # You only need to provide both keys.
 stripe_secret_key      = ""  # sk_live_xxx or sk_test_xxx
 stripe_publishable_key = ""  # pk_live_xxx or pk_test_xxx
+
+# Google Places API (https://console.cloud.google.com/apis/credentials)
+# Enable "Places API" in Google Cloud Console first
+google_places_api_key = ""

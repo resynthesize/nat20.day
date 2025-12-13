@@ -37,16 +37,6 @@ interface UseSessionsReturn {
   error: string | null
 }
 
-// D&D-themed messages based on days since last session
-export const getSessionFlavorText = (days: number | null): string => {
-  if (days === null) return 'No sessions logged yet. When did you last play?'
-  if (days <= 7) return 'The party rests at the tavern'
-  if (days <= 14) return 'Cobwebs gather on your dice'
-  if (days <= 30) return 'Your character sheets grow dusty'
-  if (days <= 60) return 'The BBEG wonders if you forgot about them'
-  return 'A bard writes a song about the adventurers who never returned'
-}
-
 export function useSessions({
   partyId,
   availability = [],
@@ -72,6 +62,7 @@ export function useSessions({
           host_member:party_members!sessions_host_member_id_fkey (
             id,
             name,
+            display_name,
             profiles (
               display_name,
               avatar_url,

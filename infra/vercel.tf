@@ -71,3 +71,10 @@ resource "vercel_project_environment_variable" "stripe_publishable_key" {
   value      = var.stripe_publishable_key
   target     = ["production", "preview"]
 }
+
+resource "vercel_project_environment_variable" "google_places_api_key" {
+  project_id = vercel_project.main.id
+  key        = "VITE_GOOGLE_PLACES_API_KEY"
+  value      = var.google_places_api_key
+  target     = ["production", "preview"]
+}

@@ -69,6 +69,55 @@ body {
   font-size: 14px;
 }
 
+/* Google Places Autocomplete - Dark Theme Override */
+.pac-container {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  font-family: var(--font-body) !important;
+  margin-top: 4px !important;
+  min-width: 400px !important;
+}
+
+.pac-item {
+  background: var(--bg-secondary) !important;
+  border-top: 1px solid var(--border-color) !important;
+  padding: var(--spacing-sm) var(--spacing-md) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.875rem !important;
+  cursor: pointer !important;
+}
+
+.pac-item:first-child {
+  border-top: none !important;
+}
+
+.pac-item:hover,
+.pac-item-selected {
+  background: var(--bg-tertiary) !important;
+}
+
+.pac-item-query {
+  color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.875rem !important;
+}
+
+.pac-matched {
+  font-weight: 700 !important;
+}
+
+.pac-icon {
+  filter: invert(0.7) !important;
+}
+
+/* Hide "powered by Google" or style it subtly */
+.pac-logo::after {
+  filter: grayscale(1) opacity(0.5) !important;
+}
+
 /* App Container */
 .app {
   min-height: 100vh;

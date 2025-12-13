@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useParty } from '@/hooks/useParty'
 import { useAuth } from '@/hooks/useAuth'
 import { usePartyMembersQuery, useAddPartyMember, useRemovePartyMember } from '@/hooks/usePartyMembersQuery'
 import { usePartyAdminsQuery, usePromoteToAdmin, useRemoveAdmin } from '@/hooks/usePartyAdminsQuery'
 import { useSubscriptionQuery, useCancelSubscription, useReactivateSubscription } from '@/hooks/useSubscriptionQuery'
+import { getDisplayName } from '@/lib/display-name'
 import { UpdatePaymentModal } from './update-payment-modal'
 import { ThemeSelector } from './theme-selector'
+import { TimePresetsSelector } from './time-presets-selector'
 import { SkeletonBox } from '@/components/organisms/shared/skeleton'
+import { Select } from '@/components/ui/select'
 
 type TabType = 'members' | 'settings' | 'billing'
 
@@ -26,6 +30,17 @@ export function AdminPanel() {
   const { currentParty, isAdmin, refreshParties } = useParty()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  // Invalidate queries that depend on party settings (days_of_week, etc.)
+  const invalidatePartyDependentQueries = useCallback(() => {
+    if (currentParty?.id) {
+      // Availability uses days_of_week to generate dates
+      queryClient.invalidateQueries({ queryKey: ['availability', currentParty.id] })
+      // Sessions may also be affected
+      queryClient.invalidateQueries({ queryKey: ['sessions', currentParty.id] })
+    }
+  }, [queryClient, currentParty?.id])
 
   const [activeTab, setActiveTab] = useState<TabType>('members')
   const [error, setError] = useState<string | null>(null)
@@ -73,6 +88,16 @@ export function AdminPanel() {
   const [openingPortal, setOpeningPortal] = useState(false)
   const [showUpdatePayment, setShowUpdatePayment] = useState(false)
   const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null)
+
+  // Delete party state
+  const [deletingParty, setDeletingParty] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
+
+  // Inline display name editing
+  const [editingDisplayNameId, setEditingDisplayNameId] = useState<string | null>(null)
+  const [editedDisplayName, setEditedDisplayName] = useState('')
+  const [savingDisplayName, setSavingDisplayName] = useState(false)
 
   // Redirect if not admin
   useEffect(() => {
@@ -191,6 +216,7 @@ export function AdminPanel() {
 
       if (updateError) throw updateError
       await refreshParties()
+      invalidatePartyDependentQueries()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update party name')
     } finally {
@@ -223,6 +249,7 @@ export function AdminPanel() {
 
       if (updateError) throw updateError
       await refreshParties()
+      invalidatePartyDependentQueries()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update schedule days')
     } finally {
@@ -262,6 +289,7 @@ export function AdminPanel() {
 
       if (updateError) throw updateError
       await refreshParties()
+      invalidatePartyDependentQueries()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update default host')
     } finally {
@@ -285,6 +313,74 @@ export function AdminPanel() {
   }
 
   const isUserAdmin = (profileId: string) => admins.some((a) => a.profile_id === profileId)
+
+  const handleStartEditDisplayName = (memberId: string, currentDisplayName: string | null) => {
+    setEditingDisplayNameId(memberId)
+    setEditedDisplayName(currentDisplayName ?? '')
+  }
+
+  const handleCancelEditDisplayName = () => {
+    setEditingDisplayNameId(null)
+    setEditedDisplayName('')
+  }
+
+  const handleSaveDisplayName = async (memberId: string) => {
+    if (!currentParty) return
+
+    setSavingDisplayName(true)
+    setError(null)
+
+    try {
+      const newDisplayName = editedDisplayName.trim() || null
+      const { error: updateError } = await supabase
+        .from('party_members')
+        .update({ display_name: newDisplayName })
+        .eq('id', memberId)
+
+      if (updateError) throw updateError
+
+      // Invalidate queries that show member names
+      queryClient.invalidateQueries({ queryKey: ['party-members'] })
+      queryClient.invalidateQueries({ queryKey: ['availability'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+
+      setEditingDisplayNameId(null)
+      setEditedDisplayName('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update display name')
+    } finally {
+      setSavingDisplayName(false)
+    }
+  }
+
+  const handleDeleteParty = async () => {
+    if (!currentParty) return
+
+    setDeletingParty(true)
+    setError(null)
+
+    try {
+      // Soft delete via RPC function
+      const { error: deleteError } = await supabase.rpc('soft_delete_party', {
+        p_party_id: currentParty.id,
+      })
+
+      if (deleteError) throw deleteError
+
+      // Refresh parties - this will exclude the deleted party
+      // The useParty hook will auto-select another party if available
+      await refreshParties()
+
+      // Close the modal and navigate away
+      setShowDeleteConfirm(false)
+      setDeleteConfirmName('')
+      navigate('/app')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete party')
+    } finally {
+      setDeletingParty(false)
+    }
+  }
 
   const handleOpenBillingPortal = async () => {
     if (!currentParty) return
@@ -481,64 +577,121 @@ export function AdminPanel() {
 
             <div className="members-list">
               <h3>Party Members ({members.length})</h3>
-              {members.map((member) => (
-                <div key={member.id} className="member-item">
-                  <div className="member-info">
-                    {member.profiles?.avatar_url ? (
-                      <img
-                        src={member.profiles.avatar_url}
-                        alt={member.name}
-                        className="member-avatar"
-                      />
-                    ) : (
-                      <div className="member-avatar-placeholder">
-                        {member.name.charAt(0).toUpperCase()}
+              {members.map((member) => {
+                const isEditingThisMember = editingDisplayNameId === member.id
+                const effectiveDisplayName = getDisplayName(member)
+                const hasCustomDisplayName = !!member.display_name
+
+                return (
+                  <div key={member.id} className="member-item">
+                    <div className="member-info">
+                      {member.profiles?.avatar_url ? (
+                        <img
+                          src={member.profiles.avatar_url}
+                          alt={member.name}
+                          className="member-avatar"
+                        />
+                      ) : (
+                        <div className="member-avatar-placeholder">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="member-details">
+                        <div className="member-name-row">
+                          {isEditingThisMember ? (
+                            <div className="display-name-edit">
+                              <input
+                                type="text"
+                                value={editedDisplayName}
+                                onChange={(e) => setEditedDisplayName(e.target.value)}
+                                placeholder={member.profiles?.display_name || member.name}
+                                className="display-name-input"
+                                disabled={savingDisplayName}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveDisplayName(member.id)
+                                  if (e.key === 'Escape') handleCancelEditDisplayName()
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="display-name-save"
+                                onClick={() => handleSaveDisplayName(member.id)}
+                                disabled={savingDisplayName}
+                                title="Save"
+                              >
+                                {savingDisplayName ? '...' : '✓'}
+                              </button>
+                              <button
+                                type="button"
+                                className="display-name-cancel"
+                                onClick={handleCancelEditDisplayName}
+                                disabled={savingDisplayName}
+                                title="Cancel"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="member-name">{effectiveDisplayName}</span>
+                              {hasCustomDisplayName && (
+                                <span className="member-original-name">({member.name})</span>
+                              )}
+                              <button
+                                type="button"
+                                className="display-name-edit-btn"
+                                onClick={() => handleStartEditDisplayName(member.id, member.display_name ?? null)}
+                                title="Edit display name for this party"
+                              >
+                                ✎
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        {member.email && (
+                          <span className="member-email">{member.email}</span>
+                        )}
+                        {member.profile_id && isUserAdmin(member.profile_id) && (
+                          <span className="member-admin-badge">Admin</span>
+                        )}
+                        {!member.profile_id && (
+                          <span className="member-pending">Not linked</span>
+                        )}
                       </div>
-                    )}
-                    <div className="member-details">
-                      <span className="member-name">{member.name}</span>
-                      {member.email && (
-                        <span className="member-email">{member.email}</span>
+                    </div>
+                    <div className="member-actions">
+                      {member.profile_id && !isUserAdmin(member.profile_id) && (
+                        <button
+                          type="button"
+                          className="action-button promote"
+                          onClick={() => handlePromoteToAdmin(member.profile_id!)}
+                        >
+                          Make Admin
+                        </button>
                       )}
-                      {member.profile_id && isUserAdmin(member.profile_id) && (
-                        <span className="member-admin-badge">Admin</span>
+                      {member.profile_id && isUserAdmin(member.profile_id) && member.profile_id !== user?.id && (
+                        <button
+                          type="button"
+                          className="action-button demote"
+                          onClick={() => handleRemoveAdmin(member.profile_id!)}
+                        >
+                          Remove Admin
+                        </button>
                       )}
-                      {!member.profile_id && (
-                        <span className="member-pending">Not linked</span>
+                      {member.profile_id !== user?.id && (
+                        <button
+                          type="button"
+                          className="action-button remove"
+                          onClick={() => handleRemoveMember(member.id, member.name)}
+                        >
+                          Remove
+                        </button>
                       )}
                     </div>
                   </div>
-                  <div className="member-actions">
-                    {member.profile_id && !isUserAdmin(member.profile_id) && (
-                      <button
-                        type="button"
-                        className="action-button promote"
-                        onClick={() => handlePromoteToAdmin(member.profile_id!)}
-                      >
-                        Make Admin
-                      </button>
-                    )}
-                    {member.profile_id && isUserAdmin(member.profile_id) && member.profile_id !== user?.id && (
-                      <button
-                        type="button"
-                        className="action-button demote"
-                        onClick={() => handleRemoveAdmin(member.profile_id!)}
-                      >
-                        Remove Admin
-                      </button>
-                    )}
-                    {member.profile_id !== user?.id && (
-                      <button
-                        type="button"
-                        className="action-button remove"
-                        onClick={() => handleRemoveMember(member.id, member.name)}
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         ) : activeTab === 'settings' ? (
@@ -598,6 +751,8 @@ export function AdminPanel() {
               </button>
             </div>
 
+            <TimePresetsSelector />
+
             <ThemeSelector />
 
             <div className="hosting-settings">
@@ -641,42 +796,40 @@ export function AdminPanel() {
                 </label>
               </div>
 
-              {defaultHostType === 'member' && (
-                <select
-                  value={defaultHostMemberId}
-                  onChange={(e) => setDefaultHostMemberId(e.target.value)}
-                  className="form-input host-select"
-                  disabled={savingHost}
+              <div className="host-input-row">
+                {defaultHostType === 'member' && (
+                  <Select
+                    value={defaultHostMemberId}
+                    onChange={setDefaultHostMemberId}
+                    placeholder="Select a member..."
+                    className="host-select"
+                    options={members.map((member) => ({
+                      value: member.id,
+                      label: getDisplayName(member),
+                    }))}
+                  />
+                )}
+
+                {defaultHostType === 'location' && (
+                  <input
+                    type="text"
+                    value={defaultHostLocation}
+                    onChange={(e) => setDefaultHostLocation(e.target.value)}
+                    placeholder="e.g., Game Store, Zoom, Discord"
+                    className="form-input host-location-input"
+                    disabled={savingHost}
+                  />
+                )}
+
+                <button
+                  type="button"
+                  className="form-button"
+                  onClick={handleSaveDefaultHost}
+                  disabled={savingHost || !hasHostChanges()}
                 >
-                  <option value="">Select a member...</option>
-                  {members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.profiles?.display_name || member.name}
-                      {member.profiles?.address ? ' (has address)' : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {defaultHostType === 'location' && (
-                <input
-                  type="text"
-                  value={defaultHostLocation}
-                  onChange={(e) => setDefaultHostLocation(e.target.value)}
-                  placeholder="e.g., Game Store, Zoom, Discord"
-                  className="form-input"
-                  disabled={savingHost}
-                />
-              )}
-
-              <button
-                type="button"
-                className="form-button"
-                onClick={handleSaveDefaultHost}
-                disabled={savingHost || !hasHostChanges()}
-              >
-                {savingHost ? 'Saving...' : 'Save Default Host'}
-              </button>
+                  {savingHost ? 'Saving...' : 'Save'}
+                </button>
+              </div>
             </div>
 
             <div className="admin-list">
@@ -712,6 +865,68 @@ export function AdminPanel() {
                 </div>
               ))}
             </div>
+
+            {currentParty.created_by === user?.id && (
+              <div className="danger-zone">
+                <h3>Danger Zone</h3>
+                <div className="danger-zone-content">
+                  {!showDeleteConfirm ? (
+                    <div className="danger-zone-item">
+                      <div className="danger-zone-info">
+                        <span className="danger-zone-title">Delete this party</span>
+                        <span className="danger-zone-description">
+                          Once deleted, all members and availability data will be hidden. This can be undone later.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="action-button danger"
+                        onClick={() => setShowDeleteConfirm(true)}
+                      >
+                        Delete Party
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="delete-confirm-inline">
+                      <p className="delete-confirm-prompt">
+                        Type <strong>{currentParty.name}</strong> to confirm deletion:
+                      </p>
+                      <input
+                        type="text"
+                        value={deleteConfirmName}
+                        onChange={(e) => setDeleteConfirmName(e.target.value)}
+                        placeholder={currentParty.name}
+                        className="form-input"
+                        autoFocus
+                      />
+                      <p className="delete-confirm-warning">
+                        All party members and availability data will be hidden. You can contact support to restore the party later.
+                      </p>
+                      <div className="delete-confirm-actions">
+                        <button
+                          type="button"
+                          className="form-button secondary"
+                          onClick={() => {
+                            setShowDeleteConfirm(false)
+                            setDeleteConfirmName('')
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button danger"
+                          onClick={handleDeleteParty}
+                          disabled={deletingParty || deleteConfirmName !== currentParty.name}
+                        >
+                          {deletingParty ? 'Deleting...' : 'Delete Party'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="billing-tab">

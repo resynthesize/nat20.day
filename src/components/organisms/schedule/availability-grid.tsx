@@ -32,7 +32,6 @@ interface AvailabilityGridProps {
   availability: GridAvailability[]
   onToggle?: (memberId: string, date: string) => void
   canEdit?: (memberId: string) => boolean
-  showAdminBadge?: boolean
   readOnly?: boolean
   scheduledSessions?: ScheduledSession[]
   // Infinite scroll props
@@ -47,7 +46,6 @@ function AvailabilityGridComponent({
   availability,
   onToggle,
   canEdit,
-  showAdminBadge,
   readOnly = false,
   scheduledSessions = [],
   containerRef,
@@ -121,124 +119,121 @@ function AvailabilityGridComponent({
   )
 
   return (
-    <div className="schedule-container" ref={containerRef}>
-      {showAdminBadge && (
-        <div className="admin-badge">Admin Mode - You can edit all schedules</div>
-      )}
-      {isLoadingPast && (
-        <div className="scroll-loader scroll-loader-left">
-          <span className="loader-spinner" />
-        </div>
-      )}
-      <div
-        className="schedule-grid"
-        style={{ '--date-columns': dates.length } as React.CSSProperties}
-      >
-        <div className="grid-header">
+    <div className="schedule-container">
+      <div className="schedule-wrapper">
+        {/* Fixed names column */}
+        <div className="schedule-names">
           <div className="player-label">Adventurer</div>
-          {dates.map((date) => {
-            const allAvailable = isAllAvailable(date)
-            const scheduled = isScheduled(date)
-            const scheduledInfo = getScheduledInfo(date)
-            const hostTooltip = scheduledInfo?.hostName
-              ? `Scheduled - Host: ${scheduledInfo.hostName}`
-              : 'Scheduled'
-            return (
-              <div
-                key={date}
-                className={`date-header ${allAvailable ? 'all-available' : ''} ${scheduled ? 'scheduled' : ''}`}
-                title={scheduled ? hostTooltip : undefined}
-              >
-                <span className="day-of-week">{getDayOfWeek(date)}</span>
-                <span className="date-display">{formatDateDisplay(date)}</span>
-                <span className="available-count">
-                  {countAvailable(date)}/{members.length}
-                  <span className="party-icon">🎲</span>
-                </span>
-              </div>
-            )
-          })}
-        </div>
-
-        {members.map((member) => {
-          const memberCanEdit = !readOnly && (canEdit ? canEdit(member.id) : true)
-
-          return (
+          {members.map((member) => (
             <div
               key={member.id}
-              className={`player-row ${member.isCurrentUser ? 'current-user' : ''} ${member.isLinked === false ? 'unlinked' : ''}`}
+              className={`player-info ${member.isCurrentUser ? 'current-user' : ''} ${member.isLinked === false ? 'unlinked' : ''}`}
             >
-              <div className="player-info">
-                {member.avatarUrl ? (
-                  <img
-                    src={member.avatarUrl}
-                    alt={member.name}
-                    className="avatar"
-                  />
-                ) : (
-                  <div className="avatar-placeholder">
-                    {member.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <span className="player-name">
-                  {member.name}
-                  {member.isCurrentUser && <span className="you-badge">(you)</span>}
-                  {member.isLinked === false && <span className="pending-badge">pending</span>}
-                </span>
-              </div>
+              {member.avatarUrl ? (
+                <img
+                  src={member.avatarUrl}
+                  alt={member.name}
+                  className="avatar"
+                />
+              ) : (
+                <div className="avatar-placeholder">
+                  {member.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="player-name">
+                {member.name}
+                {member.isCurrentUser && <span className="you-badge">(you)</span>}
+                {member.isLinked === false && <span className="pending-badge">pending</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Scrollable dates grid */}
+        <div className="schedule-dates" ref={containerRef}>
+          {isLoadingPast && (
+            <div className="scroll-loader scroll-loader-left">
+              <span className="loader-spinner" />
+            </div>
+          )}
+          <div
+            className="schedule-grid"
+            style={{ '--date-columns': dates.length } as React.CSSProperties}
+          >
+            <div className="grid-header">
               {dates.map((date) => {
-                const avail = getAvailability(member.id, date)
-                const status = avail
-                  ? avail.available
-                    ? 'available'
-                    : 'unavailable'
-                  : 'unset'
                 const allAvailable = isAllAvailable(date)
                 const scheduled = isScheduled(date)
-
+                const scheduledInfo = getScheduledInfo(date)
+                const hostTooltip = scheduledInfo?.hostName
+                  ? `Scheduled - Host: ${scheduledInfo.hostName}`
+                  : 'Scheduled'
                 return (
-                  <button
+                  <div
                     key={date}
-                    type="button"
-                    className={`availability-cell ${status} ${memberCanEdit ? 'clickable' : ''} ${allAvailable ? 'all-available-column' : ''} ${scheduled ? 'scheduled-column' : ''}`}
-                    onClick={() => memberCanEdit && handleToggle(member.id, date)}
-                    disabled={!memberCanEdit}
-                    title={
-                      memberCanEdit
-                        ? `Click to toggle availability for ${formatDateDisplay(date)}`
-                        : `${member.name}: ${status}`
-                    }
+                    className={`date-header ${allAvailable ? 'all-available' : ''} ${scheduled ? 'scheduled' : ''}`}
+                    title={scheduled ? hostTooltip : undefined}
                   >
-                    {status === 'available' && '✓'}
-                    {status === 'unavailable' && '✗'}
-                    {status === 'unset' && '?'}
-                  </button>
+                    <span className="day-of-week">{getDayOfWeek(date)}</span>
+                    <span className="date-display">{formatDateDisplay(date)}</span>
+                    <span className="available-count">
+                      {countAvailable(date)}/{members.length}
+                      <span className="party-icon">🎲</span>
+                    </span>
+                  </div>
                 )
               })}
             </div>
-          )
-        })}
-      </div>
-      {isLoadingFuture && (
-        <div className="scroll-loader scroll-loader-right">
-          <span className="loader-spinner" />
-        </div>
-      )}
 
-      <div className="legend">
-        <span className="legend-item">
-          <span className="legend-dot available" />
-          Available
-        </span>
-        <span className="legend-item">
-          <span className="legend-dot unavailable" />
-          Unavailable
-        </span>
-        <span className="legend-item">
-          <span className="legend-dot unset" />
-          Not set
-        </span>
+            {members.map((member) => {
+              const memberCanEdit = !readOnly && (canEdit ? canEdit(member.id) : true)
+
+              return (
+                <div
+                  key={member.id}
+                  className={`player-row ${member.isCurrentUser ? 'current-user' : ''} ${member.isLinked === false ? 'unlinked' : ''}`}
+                >
+                  {dates.map((date) => {
+                    const avail = getAvailability(member.id, date)
+                    const status = avail
+                      ? avail.available
+                        ? 'available'
+                        : 'unavailable'
+                      : 'unset'
+                    const allAvailable = isAllAvailable(date)
+                    const scheduled = isScheduled(date)
+
+                    return (
+                      <button
+                        key={date}
+                        type="button"
+                        className={`availability-cell ${status} ${memberCanEdit ? 'clickable' : ''} ${allAvailable ? 'all-available-column' : ''} ${scheduled ? 'scheduled-column' : ''}`}
+                        onClick={() => memberCanEdit && handleToggle(member.id, date)}
+                        disabled={!memberCanEdit}
+                        title={
+                          memberCanEdit
+                            ? `Click to toggle availability for ${formatDateDisplay(date)}`
+                            : `${member.name}: ${status}`
+                        }
+                      >
+                        {status === 'available' && '✓'}
+                        {status === 'unavailable' && '✗'}
+                        {status === 'unset' && '?'}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+          {isLoadingFuture && (
+            <div className="scroll-loader scroll-loader-right">
+              <span className="loader-spinner" />
+            </div>
+          )}
+        </div>
       </div>
+
     </div>
   )
 }

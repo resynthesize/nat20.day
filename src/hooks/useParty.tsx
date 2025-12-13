@@ -145,7 +145,7 @@ export function PartyProvider({ children }: { children: ReactNode }) {
       // 1. Create the party
       const { data: party, error: partyError } = await supabase
         .from('parties')
-        .insert({ name })
+        .insert({ name, created_by: user.id })
         .select('id')
         .single<{ id: string }>()
 

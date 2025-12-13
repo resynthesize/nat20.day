@@ -34,5 +34,6 @@
     "deny": [],
     "ask": []
   },
-  "outputStyle": "Explanatory"
+  "outputStyle": "Explanatory",
+  "enableAllProjectMcpServers": false
 }

@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { useSessions, getSessionFlavorText } from '@/hooks/useSessions'
+import { useState, useMemo } from 'react'
+import { useSessions } from '@/hooks/useSessions'
 import { useParty } from '@/hooks/useParty'
 import { useAvailability } from '@/hooks/useAvailability'
 import { formatDateDisplay, getDayOfWeek } from '@/lib/dates'
+import { getSessionFlavorTextDeterministic } from '@/lib/session-messages'
+import { getDisplayName } from '@/lib/display-name'
 
 export function SessionTracker() {
   const { currentParty } = useParty()
@@ -47,14 +49,25 @@ export function SessionTracker() {
   // Don't render while loading
   if (loading) return null
 
+  // Get party member names for flavor text
+  const partyMemberNames = useMemo(
+    () => partyMembers.map((m) => getDisplayName(m)),
+    [partyMembers]
+  )
+
+  // Use today's date as seed so message stays consistent for the day
+  const today = new Date().toISOString().split('T')[0]
+  const flavorText = useMemo(
+    () => getSessionFlavorTextDeterministic(daysSinceLastSession, partyMemberNames, today),
+    [daysSinceLastSession, partyMemberNames, today]
+  )
+
   const hasPlayed = daysSinceLastSession !== null
 
   // Only show the tracker if there's something to show:
   // - A past session exists (show days since)
   // - OR a suggested date exists (prompt to confirm)
   if (!hasPlayed && !suggestedDate) return null
-
-  const flavorText = getSessionFlavorText(daysSinceLastSession)
 
   return (
     <div className="session-tracker">

@@ -40,3 +40,12 @@ supabase/seed.sql
 
 # Generated files
 public/openapi.json
+
+# Playwright auth state (contains session tokens)
+auth.json
+
+# iOS app (separate repo)
+ios/
+
+# Playwright test results
+test-results/

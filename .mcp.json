@@ -3,6 +3,10 @@
     "nat20": {
       "type": "http",
       "url": "https://nat20.day/api/mcp"
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=nptmqjpjlemfyivgoxkq"
     }
   }
 }

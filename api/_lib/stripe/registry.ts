@@ -12,8 +12,6 @@ import {
   SubscriptionSchema,
   InvoiceSchema,
   type CheckoutSession,
-  type Subscription,
-  type Invoice,
 } from "./schemas.js"
 import { handleCheckoutCompleted } from "./handlers/checkout.js"
 import { handleSubscriptionUpdated, handleSubscriptionDeleted } from "./handlers/subscription.js"

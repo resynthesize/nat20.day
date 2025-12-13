@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 
 interface Option {
   value: string
@@ -24,6 +24,12 @@ export function Select({
   const containerRef = useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((opt) => opt.value === value)
+
+  // Find the longest label to size the select consistently
+  const longestLabel = useMemo(() => {
+    const labels = [placeholder, ...options.map((o) => o.label)]
+    return labels.reduce((a, b) => (a.length > b.length ? a : b), '')
+  }, [options, placeholder])
 
   // Close on click outside
   useEffect(() => {
@@ -67,7 +73,9 @@ export function Select({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className={selectedOption ? '' : 'select-placeholder'}>
+        {/* Hidden sizer to maintain consistent width based on longest option */}
+        <span className="select-sizer" aria-hidden="true">{longestLabel}</span>
+        <span className={`select-value ${selectedOption ? '' : 'select-placeholder'}`}>
           {selectedOption?.label || placeholder}
         </span>
         <span className="select-arrow">{isOpen ? '▲' : '▼'}</span>

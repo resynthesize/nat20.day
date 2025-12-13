@@ -96,6 +96,149 @@
   border-color: var(--text-secondary);
 }
 
+/* Desktop-only header items (hidden on mobile) */
+.header-right-desktop {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+/* Mobile Menu - Hidden on desktop */
+.mobile-menu {
+  display: none;
+  position: relative;
+}
+
+.mobile-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mobile-menu-button:hover {
+  border-color: var(--text-secondary);
+}
+
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 18px;
+  height: 18px;
+}
+
+.hamburger-line {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--text-secondary);
+  border-radius: 1px;
+  transition: all 0.15s ease;
+}
+
+.mobile-menu-button:hover .hamburger-line {
+  background: var(--text-primary);
+}
+
+.mobile-menu-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 101;
+  overflow: hidden;
+}
+
+.mobile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  min-height: 44px;
+}
+
+.mobile-menu-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.mobile-menu-item.profile-item {
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+}
+
+.mobile-menu-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+}
+
+.mobile-menu-avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.mobile-menu-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-menu-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mobile-menu-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: var(--spacing-xs) 0;
+}
+
+.mobile-menu-item.sign-out-item {
+  color: var(--text-muted);
+}
+
+.mobile-menu-item.sign-out-item:hover {
+  color: var(--text-primary);
+}
+
 /* Checkout Banner */
 .checkout-banner {
   display: flex;
@@ -239,8 +382,49 @@
 .schedule-container {
   position: relative;
   max-width: 100%;
+}
+
+.schedule-wrapper {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+/* Fixed names column */
+.schedule-names {
+  flex-shrink: 0;
+  width: 180px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.schedule-names .player-label {
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.schedule-names .player-info {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.schedule-names .player-info:last-child {
+  border-bottom: none;
+}
+
+.schedule-names .player-info.current-user {
+  background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+}
+
+/* Scrollable dates area */
+.schedule-dates {
+  flex: 1;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 
 /* Infinite Scroll Loading Indicators */
@@ -282,11 +466,8 @@
 
 .schedule-grid {
   display: grid;
-  grid-template-columns: 180px repeat(var(--date-columns, 16), 64px);
+  grid-template-columns: repeat(var(--date-columns, 16), 64px);
   background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  overflow: hidden;
   width: fit-content;
 }
 
@@ -310,12 +491,24 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.7rem;
+  height: 52px;
+  box-sizing: border-box;
 }
 
 .date-header {
   padding: var(--spacing-sm);
   text-align: center;
   border-left: 1px solid var(--border-color);
+  height: 52px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.date-header:first-child {
+  border-left: none;
 }
 
 .day-of-week {
@@ -410,6 +603,8 @@
   padding: var(--spacing-sm) var(--spacing-md);
   min-width: 0;
   overflow: hidden;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 .avatar {
@@ -467,6 +662,12 @@
   border-left: 1px solid var(--border-color);
   cursor: default;
   transition: background 0.1s ease;
+  height: 36px;
+  box-sizing: border-box;
+}
+
+.availability-cell:first-child {
+  border-left: none;
 }
 
 .availability-cell.clickable {
@@ -887,6 +1088,74 @@
   color: var(--gold);
 }
 
+/* Past Sessions Section */
+.past-dates-section {
+  margin-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--spacing-md);
+}
+
+.past-dates-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.past-dates-header:hover {
+  opacity: 0.9;
+}
+
+.past-dates-title {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.past-dates-count {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.past-dates-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.past-dates-list {
+  opacity: 0.7;
+}
+
+/* Past date item styling */
+.upcoming-date-item.past {
+  opacity: 0.7;
+  border-left-color: var(--text-muted);
+}
+
+.upcoming-date-item.past.scheduled {
+  background: var(--bg-tertiary);
+  border-left-color: var(--text-muted);
+}
+
+.upcoming-date-item.past .upcoming-date-countdown {
+  color: var(--text-muted);
+}
+
 /* Footer */
 .footer {
   padding: var(--spacing-md) var(--spacing-xl);
@@ -974,37 +1243,59 @@
 
 /* Responsive - Tablet */
 @media (max-width: 1024px) {
+  .schedule-names {
+    width: 160px;
+  }
+
   .schedule-grid {
-    grid-template-columns: minmax(120px, 160px) repeat(var(--date-columns, 16), minmax(44px, 64px));
+    grid-template-columns: repeat(var(--date-columns, 16), 64px);
   }
 }
 
 /* Responsive - Mobile */
 @media (max-width: 768px) {
   .header {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    text-align: center;
-    padding: var(--spacing-md);
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
   }
 
   .header-left {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: var(--spacing-sm);
   }
 
+  .header-left .title {
+    font-size: 1rem;
+  }
+
   .header-right {
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: flex-end;
     gap: var(--spacing-sm);
+  }
+
+  /* Hide desktop header items, show mobile menu */
+  .header-right-desktop {
+    display: none;
+  }
+
+  .mobile-menu {
+    display: block;
   }
 
   .main {
     padding: var(--spacing-md);
   }
 
+  .schedule-names {
+    width: 140px;
+  }
+
   .schedule-grid {
-    grid-template-columns: minmax(100px, 140px) repeat(var(--date-columns, 16), minmax(40px, 56px));
+    grid-template-columns: repeat(var(--date-columns, 16), 64px);
   }
 
   .player-name {
@@ -1037,6 +1328,55 @@
     flex-wrap: wrap;
     gap: var(--spacing-md);
   }
+
+  /* Touch target improvements for upcoming dates */
+  .upcoming-date-action {
+    min-height: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Compact upcoming dates layout */
+  .upcoming-dates {
+    margin-top: var(--spacing-md);
+  }
+
+  .upcoming-dates-title {
+    font-size: 0.8rem;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .upcoming-date-item {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .upcoming-date-header {
+    margin-bottom: 0;
+  }
+
+  .upcoming-date-day {
+    font-size: 0.8rem;
+  }
+
+  .upcoming-date-countdown {
+    font-size: 0.7rem;
+  }
+
+  .upcoming-date-badge {
+    font-size: 0.6rem;
+    padding: 1px 4px;
+  }
+
+  /* Hide status details on mobile to save space (except for next session and past scheduled) */
+  .upcoming-date-item:not(.next-session):not(.past.scheduled) .upcoming-date-status {
+    display: none;
+  }
+
+  .upcoming-date-status {
+    font-size: 0.7rem;
+    margin-top: var(--spacing-xs);
+  }
 }
 
 /* Responsive - Small mobile */
@@ -1045,8 +1385,12 @@
     padding: var(--spacing-sm);
   }
 
+  .schedule-names {
+    width: 100px;
+  }
+
   .schedule-grid {
-    grid-template-columns: minmax(80px, 100px) repeat(var(--date-columns, 16), minmax(36px, 48px));
+    grid-template-columns: repeat(var(--date-columns, 16), 64px);
   }
 
   .player-info {
@@ -1581,6 +1925,7 @@
 }
 
 .select-trigger {
+  position: relative;
   width: 100%;
   box-sizing: border-box;
   padding: var(--spacing-sm) var(--spacing-md);
@@ -1608,6 +1953,22 @@
 
 .select-placeholder {
   color: var(--text-muted);
+}
+
+.select-trigger .select-sizer {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: pre;
+}
+
+.select-trigger .select-value {
+  position: absolute;
+  left: var(--spacing-md);
+  right: calc(var(--spacing-md) + 1.5em);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .select-arrow {

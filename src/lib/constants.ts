@@ -57,8 +57,8 @@ export const SCHEDULE = {
   WEEKS_TO_DISPLAY: 8,
   /** Number of weeks to fetch per chunk during infinite scroll */
   WEEKS_PER_CHUNK: 4,
-  /** Pixels from scroll edge to trigger loading more dates */
-  SCROLL_THRESHOLD: 200,
+  /** Pixels from scroll edge to trigger loading more dates (aggressive prefetch) */
+  SCROLL_THRESHOLD: 800,
   /** Default days of week for schedule (4 = Thursday, 5 = Friday) */
   DEFAULT_DAYS: [4, 5] as readonly number[],
 } as const
@@ -70,4 +70,17 @@ export const SCHEDULE = {
 export const BILLING = {
   /** Default trial period for free tier (365 days in ms) */
   FREE_TRIAL_DURATION: 365 * 24 * 60 * 60 * 1000,
+} as const
+
+// =============================================================================
+// TIME PRESETS
+// =============================================================================
+
+export const TIME_PRESETS = {
+  /** Default time options for new parties */
+  DEFAULT_OPTIONS: ['17:00', '18:00', '19:00', '20:00'] as readonly string[],
+  /** Maximum number of presets shown in scheduler modal */
+  MAX_PRESETS: 4,
+  /** Maximum total time options (24 hours * 2 for half-hours) */
+  MAX_OPTIONS: 48,
 } as const

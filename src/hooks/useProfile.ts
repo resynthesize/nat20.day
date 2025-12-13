@@ -1,15 +1,27 @@
 import { useState, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 
 interface UseProfileOptions {
   userId: string
-  onSuccess?: () => void
+  onSuccess?: () => void | Promise<void>
 }
 
 export function useProfile({ userId, onSuccess }: UseProfileOptions) {
+  const queryClient = useQueryClient()
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Invalidate all queries that display profile data (names, avatars, addresses)
+  const invalidateProfileDependentQueries = useCallback(() => {
+    // Availability queries join party_members with profiles
+    queryClient.invalidateQueries({ queryKey: ['availability'] })
+    // Sessions may show host names
+    queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    // Party members query
+    queryClient.invalidateQueries({ queryKey: ['party'] })
+  }, [queryClient])
 
   const uploadAvatar = useCallback(
     async (file: File) => {
@@ -63,7 +75,8 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
 
         if (updateError) throw updateError
 
-        onSuccess?.()
+        invalidateProfileDependentQueries()
+        await onSuccess?.()
         return avatarUrl
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to upload avatar'
@@ -73,7 +86,7 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
         setUploading(false)
       }
     },
-    [userId, onSuccess]
+    [userId, onSuccess, invalidateProfileDependentQueries]
   )
 
   const updateDisplayName = useCallback(
@@ -99,7 +112,8 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
 
         if (updateError) throw updateError
 
-        onSuccess?.()
+        invalidateProfileDependentQueries()
+        await onSuccess?.()
         return true
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to update display name'
@@ -109,7 +123,7 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
         setSaving(false)
       }
     },
-    [userId, onSuccess]
+    [userId, onSuccess, invalidateProfileDependentQueries]
   )
 
   const updateAddress = useCallback(
@@ -130,7 +144,8 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
 
         if (updateError) throw updateError
 
-        onSuccess?.()
+        invalidateProfileDependentQueries()
+        await onSuccess?.()
         return true
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to update address'
@@ -140,7 +155,7 @@ export function useProfile({ userId, onSuccess }: UseProfileOptions) {
         setSaving(false)
       }
     },
-    [userId, onSuccess]
+    [userId, onSuccess, invalidateProfileDependentQueries]
   )
 
   const clearError = useCallback(() => {

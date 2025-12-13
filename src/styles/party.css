@@ -132,6 +132,18 @@
   .admin-link {
     font-size: 0.75rem;
     padding: var(--spacing-xs);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Touch target improvements */
+  .party-selector-button {
+    min-height: 44px;
+  }
+
+  .party-option {
+    min-height: 44px;
   }
 }
 

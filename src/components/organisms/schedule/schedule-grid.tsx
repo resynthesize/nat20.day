@@ -5,6 +5,7 @@ import { useAvailability } from '@/hooks/useAvailability'
 import { useParty } from '@/hooks/useParty'
 import { useSessions } from '@/hooks/useSessions'
 import { SCHEDULE } from '@/lib/constants'
+import { getDisplayName, getHostDisplayName } from '@/lib/display-name'
 import { AvailabilityGrid, type GridMember, type GridAvailability, type ScheduledSession } from './availability-grid'
 import { ScheduleGridSkeleton } from './schedule-grid-skeleton'
 import { SessionTracker } from './session-tracker'
@@ -15,10 +16,11 @@ export function ScheduleGrid() {
   const { currentParty, isAdmin, loading: partyLoading } = useParty()
 
   // Compute past limit from party creation date
+  const partyCreatedAt = currentParty?.created_at
   const pastLimit = useMemo(() => {
-    if (!currentParty?.created_at) return null
-    return format(parseISO(currentParty.created_at), 'yyyy-MM-dd')
-  }, [currentParty?.created_at])
+    if (!partyCreatedAt) return null
+    return format(parseISO(partyCreatedAt), 'yyyy-MM-dd')
+  }, [partyCreatedAt])
 
   const {
     dates,
@@ -58,6 +60,22 @@ export function ScheduleGrid() {
       lastFetchDirectionRef.current = null
     }
   }, [dates.length, isFetchingPreviousPage])
+
+  // Proactive prefetch: load next page immediately after data loads
+  // This ensures data is ready before user scrolls to the edge
+  const hasPrefetchedRef = useRef(false)
+
+  // Reset prefetch flag when party changes
+  useEffect(() => {
+    hasPrefetchedRef.current = false
+  }, [currentParty?.id])
+
+  useEffect(() => {
+    if (!loading && dates.length > 0 && !hasPrefetchedRef.current && !isFetchingNextPage) {
+      hasPrefetchedRef.current = true
+      fetchNextPage()
+    }
+  }, [loading, dates.length, fetchNextPage, isFetchingNextPage])
 
   // Scroll detection for infinite loading
   useEffect(() => {
@@ -103,7 +121,7 @@ export function ScheduleGrid() {
     () =>
       partyMembers.map((member) => ({
         id: member.id,
-        name: member.profiles?.display_name || member.name,
+        name: getDisplayName(member),
         avatarUrl: member.profiles?.avatar_url,
         isCurrentUser: member.profile_id === user?.id,
         isLinked: member.profile_id !== null,
@@ -134,7 +152,7 @@ export function ScheduleGrid() {
     return sessions.map((s) => ({
       date: s.date,
       sessionId: s.id,
-      hostName: s.host_member?.profiles?.display_name || s.host_location || null,
+      hostName: getHostDisplayName(s.host_member) || s.host_location || null,
     }))
   }, [sessions])
 
@@ -246,7 +264,6 @@ export function ScheduleGrid() {
         availability={availability}
         onToggle={handleToggle}
         canEdit={canEdit}
-        showAdminBadge={isAdmin}
         scheduledSessions={scheduledSessions}
         containerRef={containerRef}
         isLoadingPast={isFetchingPreviousPage}

@@ -86,6 +86,7 @@ export async function fetchAvailabilityData(
         email,
         profile_id,
         created_at,
+        display_name,
         profiles (
           display_name,
           avatar_url,
@@ -202,6 +203,7 @@ async function fetchAvailabilityPage(
         email,
         profile_id,
         created_at,
+        display_name,
         profiles (
           display_name,
           avatar_url,
@@ -281,12 +283,19 @@ export function useAvailability({ partyId, daysOfWeek, pastLimit }: UseAvailabil
 
   // Cache party members separately - they don't change with pagination
   // and we don't want to lose them when maxPages drops the initial page
-  const partyMembersCache = useRef<PartyMember[]>([])
+  // Note: This pattern intentionally accesses refs during render for caching purposes.
+  // The partyMembersCache persists members when maxPages drops the initial page.
+  const partyMembersCacheRef = useRef<PartyMember[]>([])
+  const lastPartyIdRef = useRef<string | undefined>(partyId)
 
-  // Clear cache when party changes
-  useEffect(() => {
-    partyMembersCache.current = []
-  }, [partyId])
+  // Clear cache when party changes (inline check, no effect needed)
+  // eslint-disable-next-line react-hooks/refs
+  if (lastPartyIdRef.current !== partyId) {
+    // eslint-disable-next-line react-hooks/refs
+    partyMembersCacheRef.current = []
+    // eslint-disable-next-line react-hooks/refs
+    lastPartyIdRef.current = partyId
+  }
 
   // Resolve allowed days with fallback
   const resolvedDaysOfWeek = useMemo(
@@ -343,11 +352,13 @@ export function useAvailability({ partyId, daysOfWeek, pastLimit }: UseAvailabil
     enabled: !!partyId,
     // Limit pages to keep scrollbar size reasonable - drop far pages when loading new ones
     maxPages: 5,
-    // Never automatically refetch - real-time handles updates
+    // Real-time handles availability updates, so data stays fresh
+    // But profile changes (name, avatar) require invalidation + refetch
     staleTime: Infinity,
     gcTime: CACHE.GC_TIME_DEFAULT,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    // Refetch on mount if stale (allows invalidation to trigger refetch on navigation)
+    refetchOnMount: true,
     refetchOnReconnect: false,
   })
 
@@ -360,13 +371,15 @@ export function useAvailability({ partyId, daysOfWeek, pastLimit }: UseAvailabil
   // Update party members cache when we get new members data
   // This persists members even when maxPages drops the initial page
   if (mergedData?.partyMembers?.length) {
-    partyMembersCache.current = mergedData.partyMembers
+    // eslint-disable-next-line react-hooks/refs
+    partyMembersCacheRef.current = mergedData.partyMembers
   }
 
   // Default values when no data
-  const dates = mergedData?.dates ?? []
+  const dates = useMemo(() => mergedData?.dates ?? [], [mergedData?.dates])
   // Use cached party members if current pages don't have them (dropped by maxPages)
-  const partyMembers = mergedData?.partyMembers?.length ? mergedData.partyMembers : partyMembersCache.current
+  // eslint-disable-next-line react-hooks/refs
+  const partyMembers = mergedData?.partyMembers?.length ? mergedData.partyMembers : partyMembersCacheRef.current
   const availability = useMemo(() => mergedData?.availability ?? [], [mergedData?.availability])
   const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch data') : null
 
@@ -389,6 +402,11 @@ export function useAvailability({ partyId, daysOfWeek, pastLimit }: UseAvailabil
           const updated = updater(merged)
           if (!updated || updated === merged) return oldData
 
+          // Use cached members if merged/updated data has none (initial page was dropped by maxPages)
+          const membersToUse = updated.partyMembers.length > 0
+            ? updated.partyMembers
+            : partyMembersCacheRef.current
+
           // Find which page contains each availability record and update it
           // For simplicity, update the first page that has the initial data
           return {
@@ -398,7 +416,7 @@ export function useAvailability({ partyId, daysOfWeek, pastLimit }: UseAvailabil
                 // Update partyMembers on first page
                 return {
                   ...page,
-                  partyMembers: updated.partyMembers,
+                  partyMembers: membersToUse,
                   availability: updated.availability.filter((a) => page.dates.includes(a.date)),
                 }
               }
@@ -656,6 +674,7 @@ export function useAvailability({ partyId, daysOfWeek, pastLimit }: UseAvailabil
     [queryClient, partyId]
   )
 
+  // eslint-disable-next-line react-hooks/refs -- partyMembers may be derived from ref cache
   return {
     dates,
     partyMembers,

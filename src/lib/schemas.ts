@@ -40,6 +40,8 @@ export const PartySchema = z.object({
   theme: ThemeIdSchema.optional().default('dnd'),
   default_host_member_id: z.string().nullable().optional(),
   default_host_location: z.string().nullable().optional(),
+  time_options: z.array(z.string().regex(/^\d{2}:\d{2}$/)).optional(),
+  default_time_presets: z.array(z.string().regex(/^\d{2}:\d{2}$/)).max(4).nullable().optional(),
 })
 
 export type Party = z.infer<typeof PartySchema>
@@ -72,6 +74,7 @@ export const PartyMemberSchema = z.object({
   email: z.string().nullable(),
   profile_id: z.string().nullable(),
   created_at: z.string(),
+  display_name: z.string().nullable().optional(), // Per-party display name override
   profiles: ProfileJoinSchema.nullable().optional(),
 })
 
@@ -124,6 +127,7 @@ export type Session = z.infer<typeof SessionSchema>
 const HostMemberJoinSchema = z.object({
   id: z.string(),
   name: z.string(),
+  display_name: z.string().nullable().optional(), // Per-party display name override
   profiles: ProfileJoinSchema.nullable().optional(),
 })
 

@@ -192,3 +192,76 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ============================================= */
+/* Party Display Names Section */
+/* ============================================= */
+
+.party-names-section {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--border-color);
+}
+
+.party-names-section h3 {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.party-names-section .section-hint {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.party-names-loading {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.party-names-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.party-name-item .profile-label span {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.party-name-input-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: stretch;
+}
+
+.party-name-input-row .profile-input {
+  flex: 1;
+}
+
+.party-name-save-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background: var(--accent-red);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.party-name-save-button:hover:not(:disabled) {
+  background: var(--accent-red-hover);
+}
+
+.party-name-save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
