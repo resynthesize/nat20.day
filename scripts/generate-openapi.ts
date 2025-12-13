@@ -15,10 +15,41 @@ import { Nat20Api } from "../api/_lib/api.js"
 // Generate OpenAPI spec from Effect API definition
 const spec = OpenApi.fromApi(Nat20Api)
 
-// Filter out billing endpoints from public docs
+// Filter out billing and signup endpoints from public docs
+// These are internal endpoints used by the frontend, not for external API users
 const filteredPaths = Object.fromEntries(
   Object.entries(spec.paths || {}).filter(
-    ([path]) => !path.startsWith("/billing")
+    ([path]) => !path.startsWith("/billing") && !path.startsWith("/signup")
+  )
+)
+
+// Filter out billing/signup-related tags
+const filteredTags = (spec.tags || []).filter(
+  (tag: { name: string }) =>
+    !tag.name.includes("Billing") && !tag.name.includes("Signup")
+)
+
+// Billing/signup-related schemas to exclude from public docs
+const excludedSchemas = new Set([
+  "CheckoutSession",
+  "SubscriptionPaymentIntent",
+  "PortalSession",
+  "CustomerSession",
+  "SetupIntent",
+  "SubscriptionCanceled",
+  "SubscriptionQueryParams",
+  "Subscription",
+  "SignupStartResponse",
+  "SignupCompleteBody",
+  "SignupCompleteResponse",
+  "CreatePortalBody",
+  "BillingError",
+])
+
+// Filter out billing/signup schemas from components
+const filteredSchemas = Object.fromEntries(
+  Object.entries((spec.components as { schemas?: Record<string, unknown> })?.schemas || {}).filter(
+    ([name]) => !excludedSchemas.has(name)
   )
 )
 
@@ -26,6 +57,11 @@ const filteredPaths = Object.fromEntries(
 const enrichedSpec = {
   ...spec,
   paths: filteredPaths,
+  tags: filteredTags,
+  components: {
+    ...(spec.components || {}),
+    schemas: filteredSchemas,
+  },
   info: {
     ...spec.info,
     title: "nat20.day API",
