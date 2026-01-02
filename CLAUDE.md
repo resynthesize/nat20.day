@@ -15,6 +15,7 @@
 | Error Handling | Effect library (API layer) |
 | Date Utils | date-fns |
 | Infrastructure | Terraform (Vercel, Cloudflare, Supabase) |
+| CI/CD | GitLab CI (self-hosted) |
 | Testing | Vitest, React Testing Library |
 
 ## Directory Structure
@@ -86,12 +87,25 @@ infra/                    # Terraform IaC
 ## Development Commands
 
 ```bash
-npm run dev          # Start Vite dev server
+npm run dev          # Start Vite dev server (uses remote Supabase)
+npm run dev:local    # Start with local Supabase (full local stack)
 npm run build        # Production build
 npm run test         # Run tests once
 npm run test:watch   # Run tests in watch mode
 npm run lint         # ESLint check
 ```
+
+### Local Supabase
+
+```bash
+npm run supabase:start   # Start local Supabase (Docker)
+npm run supabase:stop    # Stop local Supabase
+npm run supabase:reset   # Reset DB and re-run migrations
+npm run supabase:status  # Show local service URLs/keys
+npm run supabase:migrate # Push migrations to remote
+```
+
+For local development, copy `.env.local.supabase.example` to `.env.local` to use default local keys.
 
 ## Environment Variables
 
@@ -112,7 +126,8 @@ SUPABASE_SERVICE_ROLE_KEY=<service-role-key>  # Server-side only
 | `supabase/seed.sql` | Actual seed with real names/emails | Yes |
 | `infra/terraform.tfvars.example` | Template for Terraform vars | No (committed) |
 | `infra/terraform.tfvars` | Actual secrets and config | Yes |
-| `.env.local.example` | Template for env vars | No (committed) |
+| `.env.local.example` | Template for env vars (remote Supabase) | No (committed) |
+| `.env.local.supabase.example` | Template for local Supabase dev | No (committed) |
 | `.env.local` | Actual API keys | Yes |
 
 **Rules for migrations:**
@@ -129,15 +144,25 @@ SUPABASE_SERVICE_ROLE_KEY=<service-role-key>  # Server-side only
 
 ### Vercel (Frontend + API)
 
-Deployment is automatic via GitHub integration:
+Deployment is automatic via GitLab CI (`.gitlab-ci.yml`):
 - **Push to `main`** → auto-deploys to production
-- **Push to other branches** → creates preview deployment
+- **Merge requests** → creates preview deployment
 
 Manual deployment (if needed):
 ```bash
 vercel              # Preview deployment
 vercel --prod       # Production deployment
 ```
+
+### GitLab CI/CD Variables
+
+Set in GitLab → Settings → CI/CD → Variables:
+- `VERCEL_TOKEN` - Vercel API token
+- `CLOUDFLARE_API_TOKEN` - Cloudflare API token
+- `SUPABASE_ACCESS_TOKEN` - Supabase management API token
+- `STRIPE_SECRET_KEY` - Stripe secret key
+- `STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
+- `GOOGLE_PLACES_API_KEY` - Google Places API key
 
 ### Environment Variables (Vercel)
 

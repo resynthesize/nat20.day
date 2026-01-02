@@ -1,0 +1,114 @@
+stages:
+  - check
+  - terraform
+  - deploy
+
+variables:
+  NODE_VERSION: "20"
+
+# Cache node_modules between jobs
+.node_cache: &node_cache
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CI Checks - Run on merge requests
+# ─────────────────────────────────────────────────────────────────────────────
+check:
+  stage: check
+  image: node:20-slim
+  <<: *node_cache
+  script:
+    - npm ci
+    - npm run lint
+    - npm run typecheck
+    - npm run test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Terraform - Infrastructure as Code
+# ─────────────────────────────────────────────────────────────────────────────
+.terraform_base:
+  stage: terraform
+  image:
+    name: hashicorp/terraform:1.7
+    entrypoint: [""]
+  variables:
+    TF_VAR_vercel_api_token: $VERCEL_TOKEN
+    TF_VAR_cloudflare_api_token: $CLOUDFLARE_API_TOKEN
+    TF_VAR_supabase_access_token: $SUPABASE_ACCESS_TOKEN
+    TF_VAR_stripe_secret_key: $STRIPE_SECRET_KEY
+    TF_VAR_stripe_publishable_key: $STRIPE_PUBLISHABLE_KEY
+    TF_VAR_google_places_api_key: $GOOGLE_PLACES_API_KEY
+  before_script:
+    - cd infra
+    - terraform init -input=false
+
+terraform:plan:
+  extends: .terraform_base
+  script:
+    - terraform fmt -check
+    - terraform validate
+    - terraform plan -no-color -out=plan.tfplan
+  artifacts:
+    paths:
+      - infra/plan.tfplan
+    expire_in: 1 week
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - infra/**/*
+
+terraform:apply:
+  extends: .terraform_base
+  script:
+    - terraform apply -auto-approve -input=false
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - infra/**/*
+  when: manual  # Require manual approval for infra changes
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploy to Vercel
+# ─────────────────────────────────────────────────────────────────────────────
+deploy:preview:
+  stage: deploy
+  image: node:20-slim
+  <<: *node_cache
+  script:
+    - npm ci
+    - npx vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
+    - npx vercel build --token=$VERCEL_TOKEN
+    - npx vercel deploy --prebuilt --token=$VERCEL_TOKEN > deploy_url.txt
+    - echo "Preview URL:" && cat deploy_url.txt
+  artifacts:
+    paths:
+      - deploy_url.txt
+    expire_in: 1 week
+  environment:
+    name: preview/$CI_COMMIT_REF_SLUG
+    url: $CI_JOB_URL
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+deploy:production:
+  stage: deploy
+  image: node:20-slim
+  <<: *node_cache
+  script:
+    - npm ci
+    - npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+    - npx vercel build --prod --token=$VERCEL_TOKEN
+    - npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+  environment:
+    name: production
+    url: https://nat20.day
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'

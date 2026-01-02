@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "npm run supabase:start && vite",
     "build": "tsx scripts/generate-openapi.ts && tsc -b && vite build",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "lint": "eslint .",
@@ -13,7 +14,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "db:seed": "./scripts/seed.sh"
+    "db:seed": "./scripts/seed.sh",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:status": "supabase status",
+    "supabase:migrate": "supabase db push"
   },
   "dependencies": {
     "@effect/platform": "^0.93.6",

@@ -1,5 +1,5 @@
-# Vercel Project with GitHub integration
-# Pushes to main branch auto-deploy to production
+# Vercel Project - deployed via CLI from GitLab CI
+# No git integration - deployments triggered by .gitlab-ci.yml
 resource "vercel_project" "main" {
   name      = var.project_name
   framework = "vite"
@@ -8,10 +8,8 @@ resource "vercel_project" "main" {
   output_directory = "dist"
   install_command  = "npm install"
 
-  git_repository = {
-    type = "github"
-    repo = "resynthesize/nat20.day"
-  }
+  # Note: git_repository removed - using GitLab CI with Vercel CLI instead
+  # See .gitlab-ci.yml for deployment pipeline
 }
 
 # Production domain
